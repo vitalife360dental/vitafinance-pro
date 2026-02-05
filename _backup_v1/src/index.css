@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/* ========================================
+   VitaFINANCE-pro Design System (Reference: Light/Clean)
+   ======================================== */
+
+:root {
+    /* Primary Colors */
+    --color-primary: #1e293b;
+    --color-primary-light: #334155;
+    --color-accent: #2563eb;
+    /* Royal Blue (Premium) - Replaces Teal */
+    --color-accent-light: #60a5fa;
+
+    /* Sidebar Specifics (Reference Match) */
+    --sidebar-bg: #ffffff;
+    --sidebar-text: #64748b;
+    /* Slate 500 */
+    --sidebar-text-active: #ffffff;
+    --sidebar-active-bg: #2563eb;
+    /* Royal Blue */
+    --sidebar-hover-bg: #f8fafc;
+    /* Slate 50 */
+    --sidebar-border: #e2e8f0;
+    /* Slate 200 */
+
+    /* Status Colors */
+    --color-pagado: #10b981;
+    --color-abono: #f59e0b;
+    --color-danger: #ef4444;
+
+    /* Neutral Colors */
+    --color-bg: #f1f5f9;
+    /* Slate 100 - Main BG (Darker than sidebar for contrast) */
+    --color-bg-card: #ffffff;
+    --color-text: #1e293b;
+    --color-text-muted: #64748b;
+    --color-border: #e2e8f0;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+    /* Spacing */
+    --sidebar-width: 260px;
+    /* Slightly wider for premium feel */
+    --header-height: 70px;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --radius-full: 9999px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.5;
+}
+
+/* ========================================
+   App Layout
+   ======================================== */
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--color-bg);
+}
+
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 0;
+    background-color: var(--color-bg);
+    overflow-y: auto;
+}
+
+/* ========================================
+   Sidebar (Light Theme)
+   ======================================== */
+
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background-color: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    padding: 32px 20px;
+    z-index: 100;
+    border-right: 1px solid var(--sidebar-border);
+    /* Separation line */
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    margin-bottom: 40px;
+}
+
+.logo-icon {
+    width: 44px;
+    height: 44px;
+    background: var(--color-accent);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-title {
+    color: var(--color-text);
+    /* Dark text on white bg */
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+}
+
+.logo-subtitle {
+    color: var(--color-text-muted);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-item:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--color-accent);
+    /* Blue text on hover */
+}
+
+.nav-item-active {
+    background: var(--sidebar-active-bg) !important;
+    color: var(--sidebar-text-active) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    font-weight: 600;
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 12px;
+    border-top: 1px solid var(--sidebar-border);
+    margin-top: auto;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    border: 2px solid white;
+    box-shadow: var(--shadow-sm);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    color: var(--color-text);
+    /* Dark text */
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.user-role {
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 600;
+}

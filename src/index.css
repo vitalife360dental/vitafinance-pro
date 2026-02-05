@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #5dc0bb;
+  --sidebar-width: 260px;
+  --header-height: 70px;
+  --bg-app: #f1f5f9;
+}
+
+body {
+  background-color: var(--bg-app);
+  font-family: 'Outfit', sans-serif;
+  color: #1e293b;
+}
+
+@layer components {
+  .btn-primary {
+    @apply text-white px-4 py-2 rounded-lg transition-colors font-medium;
+    background-color: #5dc0bb;
+  }
+
+  .btn-primary:hover {
+    background-color: #4ab0ab;
+  }
+}
