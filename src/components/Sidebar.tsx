@@ -39,11 +39,11 @@ export function Sidebar() {
         <NavItem to="/produccion" icon={FileText} label="Producción" />
         <NavItem to="/insumos" icon={Package} label="Insumos" />
         <NavItem to="/metas" icon={Target} label="Metas" />
-        <NavItem to="/pacientes" icon={Users} label="Pacientes" />
+        <NavItem to="/pagos" icon={Wallet} label="Pagos" />
         <NavItem to="/configuracion" icon={Settings} label="Configuración" />
         <NavItem to="/aranceles" icon={ScrollText} label="Aranceles" />
         {/* Usando ruta de emergencia para bypass de layout */}
-        <NavItem to="/prueba" icon={Landmark} label="PRUEBA INTEGRADA (Click Aquí)" />
+        <NavItem to="/sri-audit" icon={Landmark} label="SRI Auditoría" />
 
       </div>
 

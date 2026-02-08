@@ -26,28 +26,31 @@ export async function scanInvoiceWithGemini(file: File) {
 
         // Enhanced prompt for Latin American/Ecuadorian invoices
         const prompt = `
-            Actúa como un asistente contable experto en facturación de Ecuador y Latinoamérica. Analiza esta imagen de una factura/recibo y extrae los datos con ALTA PRECISIÓN.
+            Actúa como un asistente contable experto en facturación de Ecuador (SRI). Analiza este documento (Imagen o PDF) y extrae los datos con EXTREMA PRECISIÓN.
 
             Contexto Local (Ecuador):
-            - **Número de Factura**: BUSCA ESTRICTAMENTE el formato de 15 dígitos (ej: 001-002-123456789 o 208-003-000625705). Se llama "No.", "Factura", o "Secuencial". Si está separado (ej: 208 003 000625705), únelo con guiones. NO uses la "Autorización" como número de factura si existe el secuencial.
-            - **RUC Emisor**: Busca el RUC de la empresa que emite (ej: 1791984722001). Suele estar en el encabezado.
-            - **Fecha**: Formato DD/MM/YYYY.
-            - **Monto**: Total a pagar final.
+            - **Número de Factura**: Formato OBLIGATORIO de 15 dígitos (ej: 001-002-123456789).
+              * Si ves texto como "Factura No. 001-001-12345" -> Extráelo.
+              * Si ves bloques separados "001" "001" "12345" -> Únelos con guiones.
+              * IGNORA números de "Autorización" (son muy largos, >30 dígitos).
+            - **RUC Emisor**: 13 dígitos numéricos terminados en 001 (ej: 1790012345001). Suele estar cerca del logo o encabezado.
+            - **Monto**: El "TOTAL A PAGAR" final. Asegúrate de leer los decimales (el punto o coma).
+            - **Fecha**: Busca la fecha de emisión.
 
-            Extrae el siguiente JSON estrictamente:
+            Extrae el siguiente JSON:
             {
-                "amount": "Monto TOTAL (numérico, ej: 19.35)",
+                "amount": "Monto TOTAL (solo número, ej: 19.35)",
                 "date": "Fecha ISO YYYY-MM-DD",
-                "invoice_number": "El número de 15 dígitos con guiones (XXX-XXX-XXXXXXXXX).",
-                "issuer_name": "Nombre comercial o Razón Social del emisor encontrado al inicio (ej: SUPERMAXI, CNT, JUAN PEREZ).",
-                "issuer_ruc": "El RUC del emisor (13 dígitos).",
-                "concept": "Resumen compra (max 5 palabras)",
-                "category": "Categoría inferida",
+                "invoice_number": "XXX-XXX-XXXXXXXXX (15 dígitos)",
+                "issuer_name": "Nombre comercial (ej: SUPERMAXI, FYBECA)",
+                "issuer_ruc": "RUC de 13 dígitos",
+                "concept": "Resumen breve de la compra (max 5 palabras)",
+                "category": "Infiere una de: [General, Materiales, Servicios, Mantenimiento, Laboratorio, Nómina, Publicidad, Insumos]",
                 "method": "EFECTIVO, TARJETA, TRANSFERENCIA"
             }
 
-            Si algún campo es ilegible, null.
-            Responde SOLO JSON.
+            Si un campo no es visible o claro, usa null. NO inventes datos.
+            Responde ÚNICAMENTE con el bloque JSON.
         `;
 
         const openai = getOpenAIClient();
@@ -58,7 +61,14 @@ export async function scanInvoiceWithGemini(file: File) {
                     role: "user",
                     content: [
                         { type: "text", text: prompt },
-                        { type: "image_url", image_url: { url: `data:${file.type || 'image/jpeg'};base64,${base64Str}` } }
+                        {
+                            type: "image_url",
+                            image_url: {
+                                // Gemini supports PDF via Data URL if supported by the adapter. 
+                                // If file.type is 'application/pdf', this constructs 'data:application/pdf;base64,...'
+                                url: `data:${file.type || 'image/jpeg'};base64,${base64Str}`
+                            }
+                        }
                     ]
                 }
             ]

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, DollarSign, User, Activity, ChevronDown } from 'lucide-react';
+import { Calendar, DollarSign, FileText, ChevronDown } from 'lucide-react';
 import { GlassModal } from './ui/GlassModal';
 
 const SelectInput = ({ label, value, onChange, options }: {
@@ -27,10 +27,9 @@ const SelectInput = ({ label, value, onChange, options }: {
     </div>
 );
 
-export default function NewIncomeModal({ isOpen, onClose, onSave, initialData }: any) {
+export default function NewOtherIncomeModal({ isOpen, onClose, onSave, initialData }: any) {
     const [formData, setFormData] = useState({
-        patient_name: '',
-        treatment_name: '',
+        description: '',
         amount: '',
         date: new Date().toISOString().split('T')[0],
         method: 'Efectivo',
@@ -43,8 +42,7 @@ export default function NewIncomeModal({ isOpen, onClose, onSave, initialData }:
         if (isOpen) {
             if (initialData) {
                 setFormData({
-                    patient_name: initialData.patient_name || '',
-                    treatment_name: initialData.treatment_name || '',
+                    description: initialData.description || '',
                     amount: initialData.amount || '',
                     date: initialData.date || new Date().toISOString().split('T')[0],
                     method: initialData.method || 'Efectivo',
@@ -53,8 +51,7 @@ export default function NewIncomeModal({ isOpen, onClose, onSave, initialData }:
                 });
             } else {
                 setFormData({
-                    patient_name: '',
-                    treatment_name: '',
+                    description: '',
                     amount: '',
                     date: new Date().toISOString().split('T')[0],
                     method: 'Efectivo',
@@ -76,7 +73,7 @@ export default function NewIncomeModal({ isOpen, onClose, onSave, initialData }:
         <GlassModal
             isOpen={isOpen}
             onClose={onClose}
-            title={initialData ? "EDITAR INGRESO" : "REGISTRAR NUEVO INGRESO"}
+            title={initialData ? "EDITAR OTRO INGRESO" : "REGISTRAR OTRO INGRESO"}
         >
             <div className="space-y-6">
 
@@ -84,30 +81,16 @@ export default function NewIncomeModal({ isOpen, onClose, onSave, initialData }:
                 <div className="space-y-5">
 
                     <div className="form-group">
-                        <label className="form-label text-xs font-bold text-slate-500 mb-1 block">PACIENTE</label>
+                        <label className="form-label text-xs font-bold text-slate-500 mb-1 block">CONCEPTO / DESCRIPCIÓN</label>
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Nombre del Paciente"
+                                placeholder="Ej. Venta de Cepillos, Pasta Dental..."
                                 className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-3 text-slate-700 font-medium focus:ring-2 focus:ring-[#5dc0bb]/20 transition-all"
-                                value={formData.patient_name}
-                                onChange={e => setFormData({ ...formData, patient_name: e.target.value })}
+                                value={formData.description}
+                                onChange={e => setFormData({ ...formData, description: e.target.value })}
                             />
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                        </div>
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label text-xs font-bold text-slate-500 mb-1 block">TRATAMIENTO / CONCEPTO</label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Ej. Profilaxis"
-                                className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-3 text-slate-700 font-medium focus:ring-2 focus:ring-[#5dc0bb]/20 transition-all"
-                                value={formData.treatment_name}
-                                onChange={e => setFormData({ ...formData, treatment_name: e.target.value })}
-                            />
-                            <Activity className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                         </div>
                     </div>
 

@@ -20,6 +20,7 @@ export interface Transaction {
     transaction_time?: string;
     issuer_ruc?: string;
     issuer_name?: string;
+    invoice_number?: string;
 
     // Computed/Display Fields
     category?: string;
@@ -28,6 +29,7 @@ export interface Transaction {
     daysCounter?: number;
 
     created_at?: string;
+    source?: string; // To distinguish between VitaFinance (local) and DentalFlow (external)
 }
 
 export interface Category {
@@ -128,6 +130,9 @@ export const financeService = {
                 chair: '-',
                 method: t.method || 'Efectivo',
                 status: t.status || 'CANCELADO',
+                invoice_number: t.invoice_number || '-',
+                issuer_ruc: t.issuer_ruc || '-',
+                issuer_name: t.issuer_name || '-',
                 source: 'VitaFinance'
             };
         });
@@ -211,7 +216,8 @@ export const financeService = {
             balance: transaction.balance,
             transaction_time: transaction.transaction_time,
             issuer_ruc: transaction.issuer_ruc,
-            issuer_name: transaction.issuer_name
+            issuer_name: transaction.issuer_name,
+            invoice_number: transaction.invoice_number
         };
 
         const { data, error } = await supabase
@@ -243,7 +249,8 @@ export const financeService = {
                 balance: updates.balance,
                 transaction_time: updates.transaction_time,
                 issuer_ruc: updates.issuer_ruc,
-                issuer_name: updates.issuer_name
+                issuer_name: updates.issuer_name,
+                invoice_number: updates.invoice_number
             })
             .eq('id', id)
             .select()
@@ -430,17 +437,54 @@ export const financeService = {
             this.getAranceles()
         ]);
 
+        // Helper for robust matching (Same as Insumos)
+        const normalize = (str: string) =>
+            str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
+
+        // Linked Map as per Insumos Logic
+        const NAME_MAPPING: Record<string, string> = {
+            'corona circonia': 'corona zirconia',
+            'botox perioral': 'botox peribucal',
+            'cirugia 3er molares': 'cirugia 3ros molares',
+            'puente fijo 3 piezas hibrida': 'puente fijo 3 piezas',
+            'puente de ceromero 2 piezas': 'puente ceromero 2 piezas',
+            'retratamiento premolares': 'retratamiento molares',
+            'endodoncia en diente incisivo': 'endodoncia incisivo',
+            'diseno de ceramica (8 piezas)': 'diseno de ceramica',
+            'diseño de ceramica (8 piezas)': 'diseno de ceramica',
+            'diseno de sonrisa (8 piezas)': 'diseno de sonrisa',
+            'diseño de sonrisa (8 piezas)': 'diseno de sonrisa',
+            'elevacion piso seno': 'elevacion piso de seno',
+            'instalacion de plano de mordida': 'instalacion plano de mordida',
+            'plano relajacion': 'plano de relajacion'
+        };
+
         // 2. Filter for Income (Production)
         const incomeTx = transactions.filter(t => t.type === 'income');
 
         // 3. Process each transaction to calculate margins
         const processedOps = incomeTx.map(tx => {
             // Find relevant tariff/arancel based on treatment name
-            // Logic: Fuzzy match or direct name match. For now, direct name.
-            const relatedTreatment = treatments.find(t => t.name === tx.treatment_name || t.name === tx.description);
-            const tariffCost = relatedTreatment ? (Number(relatedTreatment.price) * 0.33) : 0; // Simulated tariff logic
+            // Smart Match Logic
+            let searchName = normalize(tx.treatment_name || tx.description);
+            if (NAME_MAPPING[searchName]) {
+                searchName = normalize(NAME_MAPPING[searchName]);
+            }
+
+            // Try to find treatment by fuzzy match
+            const relatedTreatment = treatments.find(t => {
+                const tName = normalize(t.name);
+                return tName === searchName || searchName.includes(tName);
+            });
+
+            // Commission Logic: Use verified 33%. If no match, assume 33% of amount (Fail-safe)
+            // Ideally we want to be exact. If no relatedTreatment, we default to 33% of the invoiced amount.
+            const tariffCost = relatedTreatment
+                ? (Number(relatedTreatment.price) * 0.33)
+                : (Number(tx.amount) * 0.33);
 
             // Estimated Supplies (Insumos) - Rule of thumb: 15% of price if not specified
+            // (In a future update, we could link this to vf_treatment_costs too for 100% precision)
             const suppliesCost = Number(tx.amount) * 0.15;
 
             const netUtility = Number(tx.amount) - tariffCost - suppliesCost;
@@ -660,8 +704,6 @@ export const financeService = {
     async updateGoals(newGoals: any) {
         // newGoals is { BILLING: { MONTHLY: 30000 }, ... }
         // We need to flatten and upsert
-        // const updates = [];
-
         for (const category in newGoals) {
             for (const metric in newGoals[category]) {
                 const { error } = await supabase
@@ -674,6 +716,294 @@ export const financeService = {
 
                 if (error) console.error('Error updating goal', error);
             }
+        }
+        return true;
+    },
+
+    // --- ADVANCED COSTING (INSUMOS) 🧪 ---
+
+    async getClinicConfig() {
+        const { data, error } = await supabase.from('vf_clinic_config').select('*');
+        // Default Config in case DB is empty or fails
+        const config: any = {
+            FIXED_COSTS_MONTHLY: 1500,
+            OPERATIONAL_HOURS_MONTHLY: 160,
+            COST_RENT: 0,
+            COST_ELECTRICITY: 0,
+            COST_WATER: 0,
+            COST_INTERNET: 0,
+            COST_SALARIES: 0,
+            COST_OTHER: 0
+        };
+
+        if (data) {
+            data.forEach((row: any) => {
+                // Ensure we handle numeric conversion safely
+                if (row.value) config[row.key] = Number(row.value);
+            });
+        }
+        return config;
+    },
+
+    async saveClinicConfig(config: any) {
+        // Transform the flat config object into Key-Value rows for the DB
+        const rows = Object.entries(config).map(([key, value]) => ({
+            key: key,
+            value: String(value), // Store as text in DB as per likely schema, or handled by current schema
+            updated_at: new Date().toISOString()
+        }));
+
+        const { error } = await supabase
+            .from('vf_clinic_config')
+            .upsert(rows, { onConflict: 'key' });
+
+        if (error) {
+            console.error("Error saving config:", error);
+            throw error;
+        }
+    },
+
+    async getSupplyAnalysis() {
+        console.log('Calculating True Profitability...');
+
+        // Helper for robust matching (removes accents, lowercase, trim)
+        const normalize = (str: string) =>
+            str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
+
+        // Link External App Names (Keys) to Our DB Standard Names (Values)
+        const NAME_MAPPING: Record<string, string> = {
+            'corona circonia': 'corona zirconia',
+            'botox perioral': 'botox peribucal',
+            'cirugia 3er molares': 'cirugia 3ros molares',
+            'puente fijo 3 piezas hibrida': 'puente fijo 3 piezas',
+            'puente de ceromero 2 piezas': 'puente ceromero 2 piezas',
+            'retratamiento premolares': 'retratamiento molares', // Best guess mapping
+            'endodoncia en diente incisivo': 'endodoncia incisivo',
+            'diseno de ceramica (8 piezas)': 'diseno de ceramica',
+            'diseño de ceramica (8 piezas)': 'diseno de ceramica',
+            'diseno de sonrisa (8 piezas)': 'diseno de sonrisa',
+            'diseño de sonrisa (8 piezas)': 'diseno de sonrisa',
+            'elevacion piso seno': 'elevacion piso de seno',
+            'instalacion de plano de mordida': 'instalacion plano de mordida',
+            'plano relajacion': 'plano de relajacion'
+        };
+
+        // 1. Fetch External Treatments (Source of Truth for Price/Duration)
+        // We reuse getAranceles() which fetches from 'treatments' table
+        const treatments = await this.getAranceles();
+
+        // 2. Fetch Local Standard Costs (Supplies)
+        const { data: costs } = await supabase.from('vf_treatment_costs').select('*');
+        const costMap = new Map();
+
+        costs?.forEach((c: any) => {
+            if (c.treatment_name) {
+                // Map the normalized name to the cost object
+                // We map keys by their normalized standard name
+                const key = normalize(c.treatment_name);
+                const existing = costMap.get(key);
+                // Prefer costs > 0
+                if (!existing || (existing.supply_cost === 0 && c.supply_cost > 0)) {
+                    costMap.set(key, c);
+                }
+            }
+        });
+
+        // 3. Fetch Clinic Config
+        const config = await this.getClinicConfig();
+        const fixedCosts = config.FIXED_COSTS_MONTHLY || 1500;
+        const opHours = config.OPERATIONAL_HOURS_MONTHLY || 160;
+        const costPerMinute = fixedCosts / (opHours * 60);
+
+        // 4. Merge & Calculate
+        const analysis = treatments.map(t => {
+            // Normalize external name 
+            let searchName = normalize(t.name);
+
+            // Level 1: Check Manual Mapping
+            if (NAME_MAPPING[searchName]) {
+                searchName = normalize(NAME_MAPPING[searchName]);
+            }
+
+            // Level 2: Direct or Fuzzy Match
+            let localCost = costMap.get(searchName);
+
+            // Level 3: Partial Match Smart Logic (if no direct match)
+            if (!localCost) {
+                // Example: "Biostimulador (Radiex)" contains "Biostimulador"
+                // We iterate our known DB keys to see if one is a substring of the external name
+                for (const dbKey of costMap.keys()) {
+                    // If external name (e.g. "bioestimulador radiex") includes the db key (e.g. "bioestimulador")
+                    // AND the db key is significant length (> 4 chars) to avoid false positives like "de" or "a"
+                    if (dbKey.length > 4 && searchName.includes(dbKey)) {
+                        localCost = costMap.get(dbKey);
+                        break;
+                    }
+                }
+            }
+
+            localCost = localCost || {};
+
+            // If duration is missing in external, try local override, else default 30
+            const finalDuration = t.duration ? parseInt(t.duration) : (localCost.duration_override || 30);
+
+            // Costs
+            const commission = t.doctor_commission; // Already calculated as 33% in getAranceles
+            const supplyCost = Number(localCost.supply_cost || 0);
+            const overheadCost = finalDuration * costPerMinute;
+
+            // Profit
+            const totalCost = commission + supplyCost + overheadCost;
+            const netProfit = t.price - totalCost;
+            const margin = t.price > 0 ? (netProfit / t.price) * 100 : 0;
+
+            // Status Color
+            let profitabilityStatus = 'good'; // Green
+            if (margin < 15) profitabilityStatus = 'critical'; // Red
+            else if (margin < 40) profitabilityStatus = 'warning'; // Yellow
+
+            return {
+                ...t,
+                finalDuration,
+                supplyCost,
+                overheadCost,
+                totalCost,
+                netProfit,
+                margin,
+                profitabilityStatus,
+                categoryGroup: localCost.category_group || 'General'
+            };
+        });
+
+        return {
+            items: analysis,
+            config: {
+                ...config,
+                costPerMinute
+            }
+        };
+    },
+
+    async updateTreatmentCost(treatmentName: string, newCost: number) {
+        // Upsert the cost. category_group is required but we might not want to change it if it exists.
+        // We assume category is handled or we default it.
+        // Since we are matching by name, upsert with name is safer.
+        const { error } = await supabase
+            .from('vf_treatment_costs')
+            .upsert({
+                treatment_name: treatmentName, // normalized if possible
+                supply_cost: newCost,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'treatment_name' });
+
+        if (error) {
+            console.error('Error updating cost:', error);
+            return false;
+        }
+        return true;
+    },
+
+    async initializeDefaultCosts() {
+        console.log("Initializing default costs...");
+        // UPDATED: Uppercase NO ACCENTS to match typical External App data (e.g. APICECTOMIA)
+        const DEFAULT_COSTS = [
+            { name: 'PROFILAXIS', cost: 2.50, group: '🟢 PREVENTIVO' },
+            { name: 'PROFILAXIS NINOS', cost: 2.00, group: '🟢 PREVENTIVO' },
+            { name: 'PROFILAXIS NIÑOS', cost: 2.00, group: '🟢 PREVENTIVO' }, // Keep both just in case
+            { name: 'SELLANTES', cost: 2.20, group: '🟢 PREVENTIVO' },
+            { name: 'BLANQUEAMIENTO', cost: 25.00, group: '🔶 ESTÉTICA' },
+            { name: 'RESTAURACION SIMPLE', cost: 3.00, group: '🟡 RESTAURATIVO' },
+            { name: 'RESTAURACION COMPUESTA', cost: 4.00, group: '🟡 RESTAURATIVO' },
+            { name: 'RESTAURACION COMPLEJA', cost: 5.50, group: '🟡 RESTAURATIVO' },
+            { name: 'BLANQUEAMIENTO AMBULATORIO', cost: 15.00, group: '🔶 ESTÉTICA' },
+            { name: 'RESTAURACION RECONSTRUCTIVA', cost: 6.00, group: '🟡 RESTAURATIVO' },
+            { name: 'RESTAURACION DE CUELLOS', cost: 3.00, group: '🟡 RESTAURATIVO' },
+            { name: 'PULPOTOMIA', cost: 6.00, group: '🟢 PREVENTIVO' },
+            { name: 'PULPECTOMIA', cost: 8.00, group: '🟢 PREVENTIVO' },
+            { name: 'INSTALACION ORTODONCIA ORTOMETRIC', cost: 35.00, group: '🟣 ORTODONCIA' },
+            { name: 'INSTALACION AUTOLIGADOS', cost: 45.00, group: '🟣 ORTODONCIA' },
+            { name: 'INSTALACION CONVENCIONALES', cost: 40.00, group: '🟣 ORTODONCIA' },
+            { name: 'CONTROL AUTOLIGADOS', cost: 3.00, group: '🟣 ORTODONCIA' },
+            { name: 'CONTROL ORTOMETRIC', cost: 3.00, group: '🟣 ORTODONCIA' },
+            { name: 'CONTROL CONVENCIONAL', cost: 2.50, group: '🟣 ORTODONCIA' },
+            { name: 'INSTALACION DE MICROTORNILLO', cost: 25.00, group: '🟣 ORTODONCIA' },
+            { name: 'APICECTOMIA', cost: 18.00, group: '🔵 ENDODONCIA' },
+            { name: 'ELEVACION PISO DE SENO', cost: 180.00, group: '🔴 CIRUGÍA' },
+            { name: 'EXODONCIA', cost: 3.00, group: '🔴 CIRUGÍA' },
+            { name: 'INSTALACION PLANO DE MORDIDA', cost: 18.00, group: '🟣 ORTODONCIA' },
+            { name: 'MUCOCELE', cost: 6.00, group: '🟢 PREVENTIVO' },
+            { name: 'RETENEDORES ACETATO', cost: 20.00, group: '🟣 ORTODONCIA' },
+            { name: 'RETENEDORES ACRILICOS', cost: 30.00, group: '🟣 ORTODONCIA' },
+            { name: 'CIRUGIA 3ROS MOLARES', cost: 10.00, group: '🔴 CIRUGÍA' },
+            { name: 'CARILLA RESINA (x pieza)', cost: 6.00, group: '🔶 ESTÉTICA' },
+            { name: 'FRENILECTOMIA', cost: 5.00, group: '🔶 ESTÉTICA' },
+            { name: 'CARILLA PORCELANA', cost: 60.00, group: '🔶 ESTÉTICA' },
+            { name: 'DISENO DE SONRISA', cost: 120.00, group: '🔶 ESTÉTICA' },
+            { name: 'DISEÑO DE SONRISA', cost: 120.00, group: '🔶 ESTÉTICA' },
+            { name: 'BORDES INCISALES', cost: 5.00, group: '🔶 ESTÉTICA' },
+            { name: 'DISENO DE CERAMICA', cost: 600.00, group: '🔶 ESTÉTICA' },
+            { name: 'DISEÑO DE CERÁMICA', cost: 600.00, group: '🔶 ESTÉTICA' },
+            { name: 'GINGIVECTOMIA', cost: 6.00, group: '🔶 ESTÉTICA' },
+            { name: 'CIRUGIA COMPLEJA', cost: 12.00, group: '🔴 CIRUGÍA' },
+            { name: 'EXTRACCION SIMPLE', cost: 3.00, group: '🔴 CIRUGÍA' },
+            { name: 'EXTRACCION NINOS', cost: 2.50, group: '🔴 CIRUGÍA' },
+            { name: 'EXTRACCION DIENTES', cost: 3.00, group: '🔴 CIRUGÍA' },
+            { name: 'CIRUGIA CANINO RETENIDO', cost: 15.00, group: '🔴 CIRUGÍA' },
+            { name: 'ENDODONCIA INCISIVO', cost: 18.00, group: '🔵 ENDODONCIA' },
+            { name: 'ENDODONCIA PREMOLARES', cost: 20.00, group: '🔵 ENDODONCIA' },
+            { name: 'ENDODONCIA MOLARES', cost: 22.00, group: '🔵 ENDODONCIA' },
+            { name: 'RETRATAMIENTO DIENTE ANTERIOR', cost: 25.00, group: '🔵 ENDODONCIA' },
+            { name: 'RETRATAMIENTO MOLARES', cost: 28.00, group: '🔵 ENDODONCIA' },
+            { name: 'RETRATAMIENTO MOLARES COMPLEJO', cost: 30.00, group: '🔵 ENDODONCIA' },
+            { name: 'PULPOTOMIA DIENTE PERMANENTE', cost: 7.00, group: '🟢 PREVENTIVO' },
+            { name: 'IMPLANTE CIRUGIA', cost: 250.00, group: '🔴 IMPLANTOLOGÍA' },
+            { name: 'PROTESIS PROVISIONAL', cost: 10.00, group: '🟠 PRÓTESIS' },
+            { name: 'PROTESIS TOTAL', cost: 80.00, group: '🟠 PRÓTESIS' },
+            { name: 'PROTESIS PARCIAL', cost: 60.00, group: '🟠 PRÓTESIS' },
+            { name: 'PROTESIS ACKER 1 PIEZA', cost: 70.00, group: '🟠 PRÓTESIS' },
+            { name: 'PROTESIS CROMO COBALTO', cost: 120.00, group: '🟠 PRÓTESIS' },
+            { name: 'PLANO DE RELAJACION', cost: 20.00, group: '🟣 ORTODONCIA' },
+            { name: 'PUENTE FIJO 3 PIEZAS', cost: 180.00, group: '🟠 PRÓTESIS' },
+            { name: 'CORONA METAL PORCELANA', cost: 70.00, group: '🟠 PRÓTESIS' },
+            { name: 'CORONA ZIRCONIA', cost: 120.00, group: '🟠 PRÓTESIS' },
+            { name: 'PUENTE ACRILICO 3 PIEZAS', cost: 60.00, group: '🟠 PRÓTESIS' },
+            { name: 'PUENTE CEROMERO 2 PIEZAS', cost: 110.00, group: '🟠 PRÓTESIS' },
+            { name: 'INCRUSTACION DE CIRCONIO', cost: 90.00, group: '🟠 PRÓTESIS' },
+            { name: 'INCRUSTACION CEROMERO', cost: 70.00, group: '🟠 PRÓTESIS' },
+            { name: 'POSTE FIBRA DE VIDRIO', cost: 15.00, group: '🔵 ENDODONCIA' },
+            { name: 'RECORTE DE ENCIA 1 PIEZA', cost: 2.00, group: '🔶 ESTÉTICA' },
+            { name: 'RECORTE DE ENCIA 10 PIEZAS', cost: 8.00, group: '🔶 ESTÉTICA' },
+            { name: 'MANTENIMIENTO CARILLAS', cost: 4.00, group: '🔶 ESTÉTICA' },
+            { name: 'CORONA SOBRE IMPLANTE', cost: 140.00, group: '🔴 IMPLANTOLOGÍA' },
+            { name: 'BOTOX TERCIO SUPERIOR', cost: 90.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'BOTOX PERIBUCAL', cost: 25.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'BOTOX BRUXISMO', cost: 110.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'LABIOS AUMENTO', cost: 110.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'MENTON', cost: 95.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'MANDIBULA', cost: 95.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'SURCO NASOLABIAL', cost: 100.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'NARIZ', cost: 120.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'BIOESTIMULADOR', cost: 180.00, group: '🔶 ESTÉTICA FACIAL' },
+            { name: 'CEMENTACION CORONA', cost: 2.00, group: '🟡 RESTAURATIVO' }
+        ];
+
+        // Bulk Upsert using Promise.all for parallelism
+        // Note: Supabase upsert accepts an array.
+        const { error } = await supabase
+            .from('vf_treatment_costs')
+            .upsert(
+                DEFAULT_COSTS.map(item => ({
+                    treatment_name: item.name,
+                    category_group: item.group,
+                    supply_cost: item.cost,
+                    updated_at: new Date().toISOString()
+                })),
+                { onConflict: 'treatment_name' }
+            );
+
+        if (error) {
+            console.error('Bulk Initialise Error', error);
+            return false;
         }
         return true;
     },

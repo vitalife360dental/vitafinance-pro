@@ -11,9 +11,12 @@ import {
     Activity,
     Plus,
     Users,
-    ArrowRight
+    ArrowRight,
+    MessageCircle, // WhatsApp Icon
+    Share2
 } from 'lucide-react';
 import { financeService } from '../services/financeService';
+import { whatsappService } from '../services/whatsappService'; // Import Service
 import { PageContainer } from '../components/ui/PageContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Grid } from '../components/ui/Grid';
@@ -257,6 +260,18 @@ export default function Dashboard() {
                     <Card className="p-6">
                         <h4 className="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wider">Accesos Directos</h4>
                         <div className="grid grid-cols-1 gap-3">
+                            {/* WhatsApp Button */}
+                            <Button
+                                variant="outline"
+                                className="justify-start h-12 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 mb-2"
+                                onClick={() => whatsappService.shareDailyReport(data)}
+                            >
+                                <div className="w-6 h-6 rounded-full bg-emerald-200 text-emerald-700 flex items-center justify-center mr-3">
+                                    <MessageCircle size={14} />
+                                </div>
+                                <span className="text-emerald-900 font-bold">Enviar Reporte por WhatsApp</span>
+                            </Button>
+
                             <Button variant="outline" className="justify-start h-12 border-slate-200 hover:border-teal-300 hover:bg-teal-50" onClick={() => navigate('/ingresos')}>
                                 <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center mr-3">
                                     <TrendingUp size={14} />
@@ -275,6 +290,8 @@ export default function Dashboard() {
                                 </div>
                                 <span className="text-slate-700">Producción Doctores</span>
                             </Button>
+
+                            {/* WhatsApp Button Moved Up */}
                         </div>
                     </Card>
                     <Card className="p-5 bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-xl shadow-slate-900/20">
@@ -293,24 +310,26 @@ export default function Dashboard() {
                     </Card>
                 </div>
 
-                <NewExpenseModal
-                    isOpen={isExpenseModalOpen}
-                    onClose={() => setIsExpenseModalOpen(false)}
-                    onSave={async (expenseData: any) => {
-                        try {
-                            const { error } = await financeService.createTransaction({
-                                ...expenseData,
-                                type: 'expense'
-                            });
-                            if (error) throw error;
-                            loadDashboard();
-                            setIsExpenseModalOpen(false);
-                        } catch (e) {
-                            console.error(e);
-                            alert("Error al guardar");
-                        }
-                    }}
-                />
+            </Grid>
+
+            <NewExpenseModal
+                isOpen={isExpenseModalOpen}
+                onClose={() => setIsExpenseModalOpen(false)}
+                onSave={async (expenseData: any) => {
+                    try {
+                        const { error } = await financeService.createTransaction({
+                            ...expenseData,
+                            type: 'expense'
+                        });
+                        if (error) throw error;
+                        loadDashboard();
+                        setIsExpenseModalOpen(false);
+                    } catch (e) {
+                        console.error(e);
+                        alert("Error al guardar");
+                    }
+                }}
+            />
         </PageContainer>
     );
 }

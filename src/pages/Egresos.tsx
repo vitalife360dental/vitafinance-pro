@@ -41,6 +41,7 @@ export default function Egresos() {
                 ...data,
                 description: data.concept, // Map UI 'concept' to DB 'description'
                 payment_code: data.invoice,
+                invoice_number: data.invoice, // NEW: Save to invoice_number column
                 type: 'expense'
             });
             setIsModalOpen(false);
@@ -57,7 +58,8 @@ export default function Egresos() {
             await financeService.updateTransaction(editingTransaction.id, {
                 ...data,
                 description: data.concept, // Map UI 'concept' to DB 'description'
-                payment_code: data.invoice
+                payment_code: data.invoice,
+                invoice_number: data.invoice // NEW: Save to invoice_number column
             });
             setIsModalOpen(false);
             setEditingTransaction(null);
@@ -165,7 +167,7 @@ export default function Egresos() {
                                             {t.issuer_ruc || '-'}
                                         </td>
                                         <td className="px-6 py-4 font-mono text-xs text-slate-600">
-                                            {t.payment_code || '-'}
+                                            {t.invoice_number || t.payment_code || '-'}
                                         </td>
                                         <td className="px-6 py-4 font-medium text-slate-700">
                                             {t.description || '-'}

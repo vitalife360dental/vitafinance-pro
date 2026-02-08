@@ -73,7 +73,7 @@ export function NewExpenseModal({ isOpen, onClose, onSave, initialData }: any) {
         }
     }, [initialData]);
 
-    if (!isOpen) return null;
+
 
     const handleSubmit = async () => {
         // Basic Validation
@@ -106,10 +106,36 @@ export function NewExpenseModal({ isOpen, onClose, onSave, initialData }: any) {
         }
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // Paste Handler
+    useEffect(() => {
+        if (!isOpen) return;
 
+        const handlePaste = async (e: ClipboardEvent) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (const item of items) {
+                if (item.type.indexOf('image') === 0) {
+                    const file = item.getAsFile();
+                    if (file) {
+                        e.preventDefault(); // Prevent double paste
+                        processFile(file);
+                        return;
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, [isOpen]);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) processFile(file);
+    };
+
+    const processFile = async (file: File) => {
         setIsScanning(true);
         setScanSuccess(false);
         setErrorMsg('');
@@ -126,7 +152,7 @@ export function NewExpenseModal({ isOpen, onClose, onSave, initialData }: any) {
                     concept: data.concept || prev.concept,
                     category: data.category || 'General',
                     date: data.date || prev.date,
-                    method: data.method || 'EFECTIVO',
+                    method: data.method || 'Efectivo',
                     issuer_ruc: data.issuer_ruc || prev.issuer_ruc,
                     issuer_name: data.issuer_name || prev.issuer_name
                 }));
@@ -139,8 +165,12 @@ export function NewExpenseModal({ isOpen, onClose, onSave, initialData }: any) {
             setErrorMsg("Error al procesar el archivo.");
         } finally {
             setIsScanning(false);
+            // Clear input if needed
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
+
+    if (!isOpen) return null;
 
     return (
         <GlassModal
@@ -158,7 +188,7 @@ export function NewExpenseModal({ isOpen, onClose, onSave, initialData }: any) {
                         type="file"
                         ref={fileInputRef}
                         className="hidden"
-                        accept="image/*,.pdf"
+                        accept="image/png, image/jpeg, image/webp, application/pdf"
                         onChange={handleFileUpload}
                     />
                     <div className={`mx-auto w-12 h-12 bg-[#5dc0bb]/20 rounded-full flex items-center justify-center mb-3 text-[#5dc0bb] group-hover:scale-110 transition-transform ${isScanning ? 'animate-pulse' : ''}`}>
@@ -166,12 +196,12 @@ export function NewExpenseModal({ isOpen, onClose, onSave, initialData }: any) {
                     </div>
                     <div>
                         <h3 className="font-bold text-slate-700 text-lg mb-1">
-                            {isScanning ? 'Analizando documento...' : 'Subir Factura / Foto'}
+                            {isScanning ? 'Analizando documento...' : 'Subir Factura PDF o Imagen'}
                         </h3>
                         <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">
-                            {isScanning ? 'Extrayendo datos con IA...' : 'Autocompletar formulario'}
+                            {isScanning ? 'Extrayendo datos con IA...' : 'Admite: PDF, JPG, PNG'}
                         </p>
-                        {scanSuccess && <p className="text-emerald-500 text-xs font-bold flex items-center justify-center gap-1 mt-2"><Sparkles size={12} /> Datos cargados</p>}
+                        {scanSuccess && <p className="text-emerald-500 text-xs font-bold flex items-center justify-center gap-1 mt-2"><Sparkles size={12} /> Datos detectados con éxito</p>}
                         {errorMsg && <p className="text-red-500 text-xs font-bold mt-2">{errorMsg}</p>}
                     </div>
                 </div>

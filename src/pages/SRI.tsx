@@ -1,9 +1,4 @@
 import { useState, useEffect } from 'react';
-import { PageContainer } from '../components/ui/PageContainer';
-import { PageHeader } from '../components/ui/PageHeader';
-import { Card } from '../components/ui/Card';
-import { Grid } from '../components/ui/Grid';
-import { Button } from '../components/ui/Button';
 import { financeService } from '../services/financeService';
 import {
     AlertTriangle,
@@ -13,6 +8,49 @@ import {
     PieChart,
     Banknote
 } from 'lucide-react';
+
+// ----------------------------------------------------------------------
+// INLINE COMPONENTS (Safe Mode)
+// ----------------------------------------------------------------------
+
+function LocalPageContainer({ children }: { children: any }) {
+    return (
+        <div className="p-8 max-w-[1600px] mx-auto">
+            {children}
+        </div>
+    );
+}
+
+function LocalPageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: any }) {
+    return (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-14">
+            <div>
+                <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
+                    {title}
+                </h1>
+                {subtitle && (
+                    <p className="text-slate-500 font-medium mt-2">{subtitle}</p>
+                )}
+            </div>
+
+            {children && (
+                <div className="flex items-center gap-3">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function LocalCard({ children, className = '' }: { children: any; className?: string }) {
+    return (
+        <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>
+            {children}
+        </div>
+    );
+}
+
+// ----------------------------------------------------------------------
 
 export default function SRI() {
     const [loading, setLoading] = useState(true);
@@ -36,27 +74,34 @@ export default function SRI() {
         }
     };
 
-    if (loading || !audit) return <PageContainer>Cargando auditoría...</PageContainer>;
+    if (loading || !audit) return (
+        <LocalPageContainer>
+            <div className="flex items-center justify-center h-64">
+                <p className="text-slate-500 animate-pulse">Cargando análisis tributario...</p>
+            </div>
+        </LocalPageContainer>
+    );
 
     const { summary, alerts } = audit;
 
     return (
-        <PageContainer>
-            <PageHeader
-                title="Auditoría Tributaria (SRI) 🕵️‍♂️"
+        <LocalPageContainer>
+            <LocalPageHeader
+                title="Auditoría Tributaria (SRI) 🛡️"
                 subtitle="Monitoreo de riesgos fiscales, facturación y deducibilidad."
             >
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={loadAuditorData}>
-                        Actualizar Análisis
-                    </Button>
-                </div>
-            </PageHeader>
+                <button
+                    onClick={loadAuditorData}
+                    className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                >
+                    Actualizar Análisis
+                </button>
+            </LocalPageHeader>
 
             {/* 1. RISK SCOREBOARD */}
-            <Grid cols={3} gap={6} className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {/* Risk Level */}
-                <Card className={`p-5 border-l-4 ${summary.riskLevel === 'Alto' ? 'border-l-red-500 bg-red-50/50' : summary.riskLevel === 'Medio' ? 'border-l-amber-500 bg-amber-50/50' : 'border-l-emerald-500 bg-emerald-50/50'}`}>
+                <LocalCard className={`p-5 border-l-4 ${summary.riskLevel === 'Alto' ? 'border-l-red-500 bg-red-50/50' : summary.riskLevel === 'Medio' ? 'border-l-amber-500 bg-amber-50/50' : 'border-l-emerald-500 bg-emerald-50/50'}`}>
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Nivel de Riesgo SRI</p>
@@ -69,10 +114,10 @@ export default function SRI() {
                             {summary.riskLevel === 'Alto' ? <ShieldAlert size={24} className="text-red-500" /> : <ShieldCheck size={24} className="text-emerald-500" />}
                         </div>
                     </div>
-                </Card>
+                </LocalCard>
 
                 {/* Taxable Base */}
-                <Card className="p-5 border-l-4 border-l-blue-600">
+                <LocalCard className="p-5 border-l-4 border-l-blue-600">
                     <div>
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Base Imponible (Est.)</p>
                         <h3 className="text-2xl font-bold text-slate-900">${summary.taxableBase.toLocaleString()}</h3>
@@ -80,10 +125,10 @@ export default function SRI() {
                             Ingresos (${summary.totalProduction.toLocaleString()}) - Deducibles (${summary.deductibleExpenses.toLocaleString()})
                         </p>
                     </div>
-                </Card>
+                </LocalCard>
 
                 {/* Estimated Tax */}
-                <Card className="p-5 border-l-4 border-l-slate-800 bg-slate-50">
+                <LocalCard className="p-5 border-l-4 border-l-slate-800 bg-slate-50">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Impuesto a la Renta</p>
@@ -94,13 +139,13 @@ export default function SRI() {
                             <Banknote size={20} className="text-slate-600" />
                         </div>
                     </div>
-                </Card>
-            </Grid>
+                </LocalCard>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
 
                 {/* 2. INCOME AUDIT (CRITICAL) */}
-                <Card className="p-6">
+                <LocalCard className="p-6">
                     <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
                         <Search className="text-blue-600" size={20} />
                         <h3 className="font-bold text-slate-800">Auditoría de Ingresos (Facturación)</h3>
@@ -112,8 +157,8 @@ export default function SRI() {
                                 <span className="text-sm font-bold text-slate-700">Producción Real (Clínica)</span>
                                 <span className="text-sm font-bold text-slate-900">${summary.totalProduction.toLocaleString()}</span>
                             </div>
-                            <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
-                                <div className="h-full bg-slate-300 w-full" />
+                            <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden">
+                                <div className="h-full bg-slate-400 w-full" />
                             </div>
                         </div>
 
@@ -140,10 +185,10 @@ export default function SRI() {
                             </p>
                         </div>
                     </div>
-                </Card>
+                </LocalCard>
 
                 {/* 3. EXPENSE AUDIT */}
-                <Card className="p-6">
+                <LocalCard className="p-6">
                     <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
                         <PieChart className="text-emerald-600" size={20} />
                         <h3 className="font-bold text-slate-800">Calidad del Gasto</h3>
@@ -181,9 +226,9 @@ export default function SRI() {
                             </div>
                         )}
                     </div>
-                </Card>
+                </LocalCard>
 
             </div>
-        </PageContainer>
+        </LocalPageContainer>
     );
 }
