@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Calendar, DollarSign, FileText, ChevronDown } from 'lucide-react';
+import { Calendar, DollarSign, FileText, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
 import { GlassModal } from './ui/GlassModal';
+import { scanInvoiceWithGemini } from '../services/gemini';
 
 const SelectInput = ({ label, value, onChange, options }: {
     label: string;
@@ -36,6 +37,7 @@ export default function NewOtherIncomeModal({ isOpen, onClose, onSave, initialDa
         status: 'PAGADO',
         invoice_number: ''
     });
+    const [isScanning, setIsScanning] = useState(false);
 
     // Reset when opening or when initialData changes
     useEffect(() => {
@@ -44,7 +46,7 @@ export default function NewOtherIncomeModal({ isOpen, onClose, onSave, initialDa
                 setFormData({
                     description: initialData.description || '',
                     amount: initialData.amount || '',
-                    date: initialData.date || new Date().toISOString().split('T')[0],
+                    date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                     method: initialData.method || 'Efectivo',
                     status: initialData.status === 'CANCELADO' ? 'PAGADO' : (initialData.status || 'PAGADO'),
                     invoice_number: initialData.invoice_number || ''
@@ -69,6 +71,34 @@ export default function NewOtherIncomeModal({ isOpen, onClose, onSave, initialDa
         onClose();
     };
 
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        try {
+            const result = await scanInvoiceWithGemini(file);
+            if (result.success && result.data) {
+                const d = result.data;
+                setFormData(prev => ({
+                    ...prev,
+                    description: d.concept || d.issuer_name || prev.description,
+                    amount: d.amount ? String(d.amount) : prev.amount,
+                    date: d.date || prev.date,
+                    invoice_number: d.invoice_number || prev.invoice_number,
+                    method: ['Efectivo', 'Transferencia', 'Tarjeta'].includes(d.method) ? d.method : prev.method,
+                    status: 'PAGADO' // Default to paid for expenses/receipts usually
+                }));
+            }
+        } catch (error) {
+            console.error("Error scanning:", error);
+        } finally {
+            setIsScanning(false);
+            // Reset input
+            e.target.value = '';
+        }
+    };
+
     return (
         <GlassModal
             isOpen={isOpen}
@@ -79,6 +109,35 @@ export default function NewOtherIncomeModal({ isOpen, onClose, onSave, initialDa
 
                 {/* Manual Form */}
                 <div className="space-y-5">
+
+                    {/* AI Scan Button */}
+                    <div className="flex justify-end">
+                        <label className={`
+                            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-all
+                            ${isScanning
+                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:scale-[1.02]'}
+                        `}>
+                            <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                onChange={handleFileChange}
+                                disabled={isScanning}
+                            />
+                            {isScanning ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    <span>Analizando...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles size={16} />
+                                    <span>Escanear con IA</span>
+                                </>
+                            )}
+                        </label>
+                    </div>
 
                     <div className="form-group">
                         <label className="form-label text-xs font-bold text-slate-500 mb-1 block">CONCEPTO / DESCRIPCIÓN</label>

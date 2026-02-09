@@ -4,16 +4,14 @@ import {
     TrendingUp,
     TrendingDown,
     DollarSign,
-    Clock,
     RefreshCw,
     Wallet,
     Target,
     Activity,
-    Plus,
     Users,
     ArrowRight,
     MessageCircle, // WhatsApp Icon
-    Share2
+
 } from 'lucide-react';
 import { financeService } from '../services/financeService';
 import { whatsappService } from '../services/whatsappService'; // Import Service
@@ -23,13 +21,13 @@ import { Grid } from '../components/ui/Grid';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { NewExpenseModal } from '../components/NewExpenseModal';
+import { RevenueChart } from '../components/charts/RevenueChart';
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
-    const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [history, setHistory] = useState<any[]>([]);
 
     useEffect(() => {
         loadDashboard();
@@ -39,8 +37,12 @@ export default function Dashboard() {
         try {
             setLoading(true);
             // We use getGoalsAnalytics because it already aggregates everything (Production - Costs = Utility)
-            const result = await financeService.getGoalsAnalytics();
-            setData(result);
+            const [analytics, historyData] = await Promise.all([
+                financeService.getGoalsAnalytics(),
+                financeService.getFinancialHistory()
+            ]);
+            setData(analytics);
+            setHistory(historyData);
         } catch (error) {
             console.error('Error loading dashboard:', error);
         } finally {
@@ -73,15 +75,7 @@ export default function Dashboard() {
                 subtitle="Resumen ejecutivo de rendimiento en tiempo real."
             >
                 <div className="flex gap-2">
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        className="bg-teal-600 hover:bg-teal-700"
-                        onClick={() => setIsExpenseModalOpen(true)}
-                    >
-                        <Plus size={16} className="mr-2" />
-                        Registrar Gasto
-                    </Button>
+
                     <Button
                         variant="outline"
                         size="sm"
@@ -142,6 +136,11 @@ export default function Dashboard() {
                     </div>
                 </Card>
             </Grid>
+
+            {/* 1.5. TREND CHART (New) */}
+            <div className="mb-8">
+                <RevenueChart data={history} />
+            </div>
 
             <Grid cols={3} gap={6}>
 
@@ -312,24 +311,7 @@ export default function Dashboard() {
 
             </Grid>
 
-            <NewExpenseModal
-                isOpen={isExpenseModalOpen}
-                onClose={() => setIsExpenseModalOpen(false)}
-                onSave={async (expenseData: any) => {
-                    try {
-                        const { error } = await financeService.createTransaction({
-                            ...expenseData,
-                            type: 'expense'
-                        });
-                        if (error) throw error;
-                        loadDashboard();
-                        setIsExpenseModalOpen(false);
-                    } catch (e) {
-                        console.error(e);
-                        alert("Error al guardar");
-                    }
-                }}
-            />
+
         </PageContainer>
     );
 }

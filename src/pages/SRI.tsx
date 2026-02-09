@@ -6,7 +6,13 @@ import {
     ShieldAlert,
     Search,
     PieChart,
-    Banknote
+    Banknote,
+    TrendingDown,
+    TrendingUp,
+    Info,
+    ChevronDown,
+    ChevronUp,
+    HelpCircle
 } from 'lucide-react';
 
 // ----------------------------------------------------------------------
@@ -55,6 +61,7 @@ function LocalCard({ children, className = '' }: { children: any; className?: st
 export default function SRI() {
     const [loading, setLoading] = useState(true);
     const [audit, setAudit] = useState<any>(null);
+    const [showTaxDetails, setShowTaxDetails] = useState(false);
 
     useEffect(() => {
         console.log("SRI Component MOUNTED 🚀");
@@ -82,7 +89,7 @@ export default function SRI() {
         </LocalPageContainer>
     );
 
-    const { summary, alerts } = audit;
+    const { summary, alerts, riskHistory, smartAlerts } = audit;
 
     return (
         <LocalPageContainer>
@@ -98,20 +105,38 @@ export default function SRI() {
                 </button>
             </LocalPageHeader>
 
-            {/* 1. RISK SCOREBOARD */}
+            {/* 1. RISK SCOREBOARD & HISTORY */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {/* Risk Level */}
+                {/* Risk Level & History */}
                 <LocalCard className={`p-5 border-l-4 ${summary.riskLevel === 'Alto' ? 'border-l-red-500 bg-red-50/50' : summary.riskLevel === 'Medio' ? 'border-l-amber-500 bg-amber-50/50' : 'border-l-emerald-500 bg-emerald-50/50'}`}>
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start mb-4">
                         <div>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Nivel de Riesgo SRI</p>
                             <h3 className={`text-2xl font-bold ${summary.riskLevel === 'Alto' ? 'text-red-700' : 'text-emerald-700'}`}>
                                 {summary.riskLevel.toUpperCase()}
                             </h3>
-                            <p className="text-xs text-slate-500 mt-2">Basado en brecha de facturación</p>
+                            <p className="text-xs text-slate-500 mt-1">Basado en brecha de facturación</p>
                         </div>
                         <div className="p-3 bg-white rounded-xl shadow-sm">
                             {summary.riskLevel === 'Alto' ? <ShieldAlert size={24} className="text-red-500" /> : <ShieldCheck size={24} className="text-emerald-500" />}
+                        </div>
+                    </div>
+
+                    {/* 🔶 2. HISTÓRICO DE RIESGO */}
+                    <div className="pt-3 border-t border-slate-200/60">
+                        <p className="text-[10px] items-center gap-1 font-bold text-slate-400 uppercase mb-2 flex">
+                            <TrendingUp size={12} /> Histórico (6 meses)
+                        </p>
+                        <div className="flex justify-between gap-1">
+                            {riskHistory?.map((h: any, i: number) => (
+                                <div key={i} className="flex flex-col items-center">
+                                    <div className={`w-2 h-2 rounded-full mb-1 ${h.color === 'emerald' ? 'bg-emerald-400' :
+                                            h.color === 'amber' ? 'bg-amber-400' :
+                                                'bg-red-400'
+                                        }`} />
+                                    <span className="text-[9px] text-slate-500 font-medium">{h.month}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </LocalCard>
@@ -127,8 +152,8 @@ export default function SRI() {
                     </div>
                 </LocalCard>
 
-                {/* Estimated Tax */}
-                <LocalCard className="p-5 border-l-4 border-l-slate-800 bg-slate-50">
+                {/* Estimated Tax + 🔶 1. DESGLOSE (Collapsible) */}
+                <LocalCard className="p-5 border-l-4 border-l-slate-800 bg-slate-50 transition-all">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Impuesto a la Renta</p>
@@ -139,6 +164,34 @@ export default function SRI() {
                             <Banknote size={20} className="text-slate-600" />
                         </div>
                     </div>
+
+                    <button
+                        onClick={() => setShowTaxDetails(!showTaxDetails)}
+                        className="mt-4 flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                        {showTaxDetails ? 'Ocultar cálculo' : 'Ver cálculo estimado'}
+                        {showTaxDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+
+                    {showTaxDetails && (
+                        <div className="mt-3 pt-3 border-t border-slate-200 space-y-2 animate-in fade-in slide-in-from-top-1">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-slate-500">Base Imponible:</span>
+                                <span className="font-medium text-slate-700">${summary.taxableBase.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-slate-500">Tarifa Estimada:</span>
+                                <span className="font-medium text-slate-700">20% (Régimen General)</span>
+                            </div>
+                            <div className="flex justify-between text-xs pt-1 border-t border-slate-200/50">
+                                <span className="font-bold text-slate-600">Impuesto Causado:</span>
+                                <span className="font-bold text-slate-800">${summary.estimatedRenta.toLocaleString()}</span>
+                            </div>
+                            <p className="text-[9px] text-slate-400 mt-1 italic">
+                                * Cálculo referencial. No sustituye asesoría contable.
+                            </p>
+                        </div>
+                    )}
                 </LocalCard>
             </div>
 
@@ -208,7 +261,23 @@ export default function SRI() {
                     </div>
 
                     <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Alertas de Auditoría</h4>
+                        {/* 🔶 3. ALERTAS INTELIGENTES */}
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Insights & Alertas</h4>
+                            <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">IA Analysis</span>
+                        </div>
+
+                        {smartAlerts?.length > 0 && smartAlerts.map((alert: any, i: number) => (
+                            <div key={`smart-${i}`} className="flex items-start gap-3 p-3 rounded-lg border bg-blue-50/50 border-blue-100">
+                                <Info size={16} className="mt-0.5 text-blue-500" />
+                                <div>
+                                    <p className="text-sm font-bold text-blue-800">{alert.title}</p>
+                                    <p className="text-xs text-blue-600">{alert.message}</p>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Traditional Alerts (Fallback) */}
                         {alerts.length > 0 ? (
                             alerts.map((alert: any, i: number) => (
                                 <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border ${alert.level === 'critical' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
@@ -220,10 +289,12 @@ export default function SRI() {
                                 </div>
                             ))
                         ) : (
-                            <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 p-3 rounded-lg">
-                                <ShieldCheck size={18} />
-                                <span className="text-sm font-medium">Todo parece en orden.</span>
-                            </div>
+                            (!smartAlerts || smartAlerts.length === 0) && (
+                                <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 p-3 rounded-lg">
+                                    <ShieldCheck size={18} />
+                                    <span className="text-sm font-medium">Todo parece en orden.</span>
+                                </div>
+                            )
                         )}
                     </div>
                 </LocalCard>

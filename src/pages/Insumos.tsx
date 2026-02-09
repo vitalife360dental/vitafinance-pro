@@ -6,8 +6,10 @@ import { Badge } from '../components/ui/Badge';
 import { Search, Filter, AlertTriangle, TrendingUp, DollarSign, Clock, Settings, RefreshCw, Sliders } from 'lucide-react';
 import { financeService } from '../services/financeService';
 import { OperationalConfigModal } from '../components/OperationalConfigModal';
+import { useAuth } from '../context/AuthContext';
 
 export default function Insumos() {
+    const { role } = useAuth();
     const [loading, setLoading] = useState(true);
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -91,26 +93,32 @@ export default function Insumos() {
                     subtitle="Control de costos, insumos y gastos operativos por tratamiento."
                 />
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={async () => {
-                            setLoading(true);
-                            await financeService.initializeDefaultCosts();
-                            await loadData();
-                        }}
-                        className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors"
-                        title="Recargar costos predeterminados"
-                    >
-                        <Settings size={18} />
-                        <span className="text-sm font-bold">Sincronizar Costos</span>
-                    </button>
+                    {/* Only Admin can sync defaults */}
+                    {(role === 'admin' || role === 'super_admin') && (
+                        <button
+                            onClick={async () => {
+                                setLoading(true);
+                                await financeService.initializeDefaultCosts();
+                                await loadData();
+                            }}
+                            className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors"
+                            title="Recargar costos predeterminados"
+                        >
+                            <Settings size={18} />
+                            <span className="text-sm font-bold">Sincronizar Costos</span>
+                        </button>
+                    )}
 
-                    <button
-                        onClick={() => setIsConfigOpen(true)}
-                        className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
-                    >
-                        <Sliders size={18} />
-                        <span className="text-sm font-bold">Configurar Gastos</span>
-                    </button>
+                    {/* Only Admin can configure expenses */}
+                    {(role === 'admin' || role === 'super_admin') && (
+                        <button
+                            onClick={() => setIsConfigOpen(true)}
+                            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                        >
+                            <Sliders size={18} />
+                            <span className="text-sm font-bold">Configurar Gastos</span>
+                        </button>
+                    )}
 
                     <div className="flex flex-col items-end mr-4">
                         <span className="text-[10px] uppercase font-bold text-slate-400">Costo Operativo (Sillón)</span>
@@ -127,7 +135,9 @@ export default function Insumos() {
                         <div className="p-4">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
-                                    <h3 className="font-bold text-slate-700">{chair.name}</h3>
+                                    <h3 className="font-bold text-slate-700">
+                                        {(chair.name === '-' || !chair.name) ? 'Sin Asignar / Varios' : chair.name}
+                                    </h3>
                                     <p className="text-xs text-slate-400">{chair.hours.toFixed(1)} horas ocupadas</p>
                                 </div>
                                 {index === 0 && <Badge variant="warning" className="text-[10px]">👑 Líder</Badge>}

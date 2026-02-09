@@ -10,6 +10,8 @@ import Insumos from './pages/Insumos';
 import Metas from './pages/Metas';
 import Pagos from './pages/Pagos';
 import SRI from './pages/SRI';
+import { useAuth } from './context/AuthContext';
+import { PinEntry } from './components/auth/PinEntry';
 
 // Placeholder for other routes that we haven't built yet
 function PlaceholderPage({ title }: { title: string }) {
@@ -22,6 +24,26 @@ function PlaceholderPage({ title }: { title: string }) {
 }
 
 function App() {
+    const { role, isLoading, user } = useAuth();
+
+    console.log('App State:', { role, isLoading, user });
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+                <div className="text-center">
+                    <h2 className="text-xl font-bold mb-2">Iniciando VitaFINANCE...</h2>
+                    <p className="text-slate-400 text-sm">Cargando configuración de seguridad</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!role) {
+        console.log('No role found, rendering PinEntry');
+        return <PinEntry />;
+    }
+
     return (
         <BrowserRouter>
             <Routes>
@@ -40,9 +62,6 @@ function App() {
                     <Route path="aranceles" element={<Aranceles />} />
                     <Route path="pagos" element={<Pagos />} />
                     <Route path="sri-audit" element={<SRI />} />
-
-                    {/* Configuration */}
-                    <Route path="configuracion" element={<PlaceholderPage title="Configuración" />} />
 
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>

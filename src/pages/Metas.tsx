@@ -18,7 +18,10 @@ import {
     Percent
 } from 'lucide-react';
 
+import { useAuth } from '../context/AuthContext';
+
 export default function Metas() {
+    const { role } = useAuth();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
     const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -65,10 +68,13 @@ export default function Metas() {
                         <CalendarClock size={16} />
                         <span className="hidden sm:inline">Proyección al Cierre</span>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setIsConfigOpen(true)}>
-                        <Settings size={16} className="mr-2" />
-                        Configurar
-                    </Button>
+
+                    {(role === 'admin' || role === 'super_admin') && (
+                        <Button variant="outline" size="sm" onClick={() => setIsConfigOpen(true)}>
+                            <Settings size={16} className="mr-2" />
+                            Configurar
+                        </Button>
+                    )}
                 </div>
             </PageHeader>
 

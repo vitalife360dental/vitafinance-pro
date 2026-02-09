@@ -6,6 +6,16 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VitaFinance Pro</title>
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            alert('Global Error: ' + message + '\nSource: ' + source + ':' + lineno);
+            console.error('Global Error:', error);
+        };
+        window.onunhandledrejection = function (event) {
+            alert('Unhandled Promise Rejection: ' + event.reason);
+            console.error('Unhandled Rejection:', event.reason);
+        };
+    </script>
 </head>
 
 <body>
