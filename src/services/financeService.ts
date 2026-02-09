@@ -1168,13 +1168,21 @@ export const financeService = {
             production,
             transactions,
             patients,
-            treatments
+            treatments,
+            taxAudit,
+            supplyAnalysis,
+            financialHistory,
+            clinicConfig
         ] = await Promise.all([
             this.getGoalsAnalytics(),
             this.getProductionAnalytics(),
             this.getRecentTransactions(15), // Detailed recent history
             this.getPatients(),
-            this.getAranceles()
+            this.getAranceles(),
+            this.getTaxAuditorAnalytics(),
+            this.getSupplyAnalysis(),
+            this.getFinancialHistory(12),
+            this.getClinicConfig()
         ]);
 
         return {
@@ -1182,7 +1190,11 @@ export const financeService = {
             production,
             transactions,
             patients: patients.slice(0, 20), // Top 20 recent patients
-            treatments: treatments.slice(0, 20) // Top 20 treatments
+            treatments: treatments.slice(0, 50), // Increased to top 50
+            taxAudit,
+            supplyAnalysis,
+            financialHistory,
+            clinicConfig
         };
     }
 };
