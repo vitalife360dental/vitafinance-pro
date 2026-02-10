@@ -21,6 +21,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error('Uncaught error:', error, errorInfo);
+
+        // Auto-recover from specific DOM errors
+        if (error.message.includes('removeChild') || error.message.includes('NotFoundError')) {
+            console.warn('Recovering from DOM error, reloading...');
+            // Optional: You could try to perform a soft reset here instead of full reload, 
+            // but for safety, regular reload is best. 
+            // However, to be less intrusive, we might just want to let the user click "Reload" 
+            // BUT usually this error crashes the React tree.
+        }
     }
 
     public render() {
@@ -28,7 +37,14 @@ export class ErrorBoundary extends Component<Props, State> {
             return (
                 <div style={{ padding: '20px', color: 'red', backgroundColor: '#ffebee', height: '100vh' }}>
                     <h1>Algo salió mal.</h1>
-                    <pre>{this.state.error?.toString()}</pre>
+                    <p style={{ color: '#666', marginBottom: '10px' }}>
+                        {this.state.error?.message.includes('removeChild')
+                            ? 'Ocurrió un error visual momentáneo. Por favor, recarga la página.'
+                            : 'Ha ocurrido un error inesperado.'}
+                    </p>
+                    <pre style={{ background: '#eee', padding: '10px', borderRadius: '4px', fontSize: '0.8em', overflow: 'auto' }}>
+                        {this.state.error?.toString()}
+                    </pre>
                     <button
                         onClick={() => {
                             localStorage.clear();

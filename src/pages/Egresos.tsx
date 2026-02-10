@@ -81,7 +81,12 @@ export default function Egresos() {
             await financeService.deleteTransaction(transactionToDelete);
             setDeleteModalOpen(false);
             setTransactionToDelete(null);
-            loadData();
+
+            // Wait for modal exit animation to prevent DOM node race condition
+            // "NotFoundError: Failed to execute 'removeChild' on 'Node'"
+            setTimeout(() => {
+                loadData();
+            }, 100);
         } catch (error) {
             console.error('Error deleting expense:', error);
         }
