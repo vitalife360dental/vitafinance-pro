@@ -12,7 +12,7 @@ export const aiAssistantService = {
 
   async generateSystemPrompt() {
     // Gather Context
-    console.log('Gathering context for VitaBot...');
+    console.log('Gathering context for VitaBot... (Fixes Applied v2)');
     // @ts-ignore
     const context = await financeService.getAiContext();
 
@@ -47,7 +47,7 @@ export const aiAssistantService = {
             • Pago a doctores mediante **ARANCELES FIJOS**
             • Costos Fijos Mensuales: $${clinicConfig.FIXED_COSTS_MONTHLY}
             • Horas Operativas: ${clinicConfig.OPERATIONAL_HOURS_MONTHLY}h/mes
-            • Costo Operativo por Minuto: $${supplyAnalysis.config.costPerMinute.toFixed(2)}
+            • Costo Operativo por Minuto: $${(supplyAnalysis.config?.costPerMinute || 0).toFixed(2)}
 
             ────────────────────────
             📊 MÓDULOS ACTIVOS
@@ -64,15 +64,15 @@ export const aiAssistantService = {
             ────────────────────────
             🏭 PRODUCCIÓN Y RENTABILIDAD
             ────────────────────────
-            • Tratamiento Estrella: ${topTreatments[0]?.name || 'N/A'} (Margen ${topTreatments[0]?.margin.toFixed(0)}%)
+            • Tratamiento Estrella: ${topTreatments[0]?.name || 'N/A'} (Margen ${(topTreatments[0]?.margin || 0).toFixed(0)}%)
             • Doctor Top: ${doctors[0]?.name || 'N/A'} (Aporte Neto: $${doctors[0]?.netContribution.toLocaleString()})
-            • Rentabilidad/Hora Actual: $${goalsData.actual.efficiency.hourly.toFixed(0)} (Meta: $${goals.EFFICIENCY.HOURLY_UTILITY})
+            • Rentabilidad/Hora Actual: $${(goalsData.actual?.efficiency?.hourly || 0).toFixed(0)} (Meta: $${goals.EFFICIENCY?.HOURLY_UTILITY || 0})
 
             ────────────────────────
             ⚖️ ESTADO FISCAL (AUDITORÍA SRI)
             ────────────────────────
             • Ingreso Real: $${taxAudit.summary.totalProduction.toLocaleString()} vs Fiscal: $${taxAudit.summary.totalInvoiced.toLocaleString()}
-            • Brecha Sin Facturar: $${taxAudit.summary.subInvoicingGap.toLocaleString()} (${taxAudit.summary.subInvoicingPercent.toFixed(1)}%)
+            • Brecha Sin Facturar: $${(taxAudit.summary?.subInvoicingGap || 0).toLocaleString()} (${(taxAudit.summary?.subInvoicingPercent || 0).toFixed(1)}%)
             • Gastos No Deducibles: $${taxAudit.summary.nonDeductibleExpenses.toLocaleString()}
             • Riesgo Fiscal: ${taxAudit.summary.riskLevel}
 
@@ -82,7 +82,7 @@ export const aiAssistantService = {
             - **Fecha**: ${new Date().toLocaleDateString('es-EC')}
             - **Facturación Mes**: $${actual.billing.month.toLocaleString()} (Meta: $${goals.BILLING.MONTHLY.toLocaleString()})
             - **Proyección Cierre**: $${actual.billing.projected.toLocaleString()}
-            - **Utilidad Neta**: $${actual.utility.month.toLocaleString()} (Margen: ${((actual.utility.month / (actual.billing.month || 1)) * 100).toFixed(1)}%)
+            - **Utilidad Neta**: $${(actual.utility?.month || 0).toLocaleString()} (Margen: ${((actual.utility?.month / (actual.billing?.month || 1)) * 100).toFixed(1)}%)
 
             📊 **HISTORIAL FINANCIERO (Últimos Meses)**:
             ${financialHistory.map((h: any) => `- ${h.month}: Ingresos $${h.income} | Gastos $${h.expenses}`).join('\n            ')}
