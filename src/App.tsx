@@ -14,14 +14,7 @@ import { useAuth } from './context/AuthContext';
 import { PinEntry } from './components/auth/PinEntry';
 
 // Placeholder for other routes that we haven't built yet
-function PlaceholderPage({ title }: { title: string }) {
-    return (
-        <div className="space-y-4">
-            <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
-            <p className="text-slate-500">Esta sección está actualmente en construcción.</p>
-        </div>
-    );
-}
+
 
 function App() {
     const { role, isLoading, user } = useAuth();

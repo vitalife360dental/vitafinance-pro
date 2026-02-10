@@ -222,7 +222,7 @@ export default function Egresos() {
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={confirmDelete}
                 title="Eliminar Gasto"
-                message="¿Estás seguro de que deseas eliminar este registro? Esta acción afectará el balance y no se puede deshacer."
+                description="¿Estás seguro de que deseas eliminar este registro? Esta acción afectará el balance y no se puede deshacer."
             />
         </PageContainer>
     );

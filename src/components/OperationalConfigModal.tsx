@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, DollarSign, Clock } from 'lucide-react';
+import { X, Save, Clock } from 'lucide-react';
 
 interface OperationalConfigModalProps {
     isOpen: boolean;

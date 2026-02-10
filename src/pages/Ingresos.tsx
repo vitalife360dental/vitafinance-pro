@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Download, Filter, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, ShoppingBag, Stethoscope, Users, Calendar, DollarSign, CreditCard } from 'lucide-react';
+import { Search, Download, Filter, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, ShoppingBag, Stethoscope } from 'lucide-react';
 import { financeService } from '../services/financeService';
 import type { Transaction } from '../services/financeService';
 import { PageContainer } from '../components/ui/PageContainer';

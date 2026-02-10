@@ -4,14 +4,13 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { financeService } from '../services/financeService';
-import { DollarSign, User, Calendar, CheckCircle, Wallet, ArrowRight, History, X } from 'lucide-react';
+import { DollarSign, User, Calendar, CheckCircle, Wallet, History, X } from 'lucide-react';
 import { NewExpenseModal } from '../components/NewExpenseModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function Pagos() {
-    const [transactions, setTransactions] = useState([]);
-    const [loading, setLoading] = useState(true);
+
     const [doctors, setDoctors] = useState<any[]>([]);
     const [summary, setSummary] = useState({ totalCommissions: 0, totalPaid: 0, pending: 0 });
     const [categories, setCategories] = useState<any[]>([]); // Store categories
@@ -27,7 +26,7 @@ export default function Pagos() {
     }, []);
 
     const loadData = async () => {
-        setLoading(true);
+
         try {
             const [production, transactionsData, cats] = await Promise.all([
                 financeService.getProductionAnalytics(),
@@ -36,7 +35,7 @@ export default function Pagos() {
             ]);
 
             setCategories(cats || []);
-            setTransactions(transactionsData);
+
 
             // 1. Get Production (Calculated Commissions)
             // const production = await financeService.getProductionAnalytics(); // Already fetched
@@ -47,7 +46,7 @@ export default function Pagos() {
             // Filter expenses related to "Honorarios" or "Personal"
             // Simple logic: Check if category is related to Staff/Personal
             // Enhanced logic: Future update could filter by Category ID 4 (Personal)
-            const paymentsFiltered = payments.filter((t: any) => t.description?.toLowerCase().includes('pago') || t.description?.toLowerCase().includes('honorario'));
+
 
             // 3. Merge Data
             const doctorStats = production.doctors.map((doc: any) => {
@@ -81,7 +80,7 @@ export default function Pagos() {
         } catch (error) {
             console.error(error);
         } finally {
-            setLoading(false);
+
         }
     };
 

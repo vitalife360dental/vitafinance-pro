@@ -8,6 +8,7 @@ export interface Transaction {
     category_id?: number;
     category_name?: string;
     type: 'income' | 'expense';
+    chair?: string;
 
     // DentalFlow Fields
     patient_name?: string;
@@ -752,7 +753,7 @@ export const financeService = {
     // --- ADVANCED COSTING (INSUMOS) 🧪 ---
 
     async getClinicConfig() {
-        const { data, error } = await supabase.from('vf_clinic_config').select('*');
+        const { data } = await supabase.from('vf_clinic_config').select('*');
         // Default Config in case DB is empty or fails
         const config: any = {
             FIXED_COSTS_MONTHLY: 1500,
@@ -1041,12 +1042,12 @@ export const financeService = {
     // --- SRI Auditor Engine 🕵️‍♂️ ---
     async getTaxAuditorAnalytics() {
         console.log('Running Tax Audit...');
-        const [dashboard, transactions] = await Promise.all([
+        const [, transactions] = await Promise.all([
             this.getDashboardMetrics(),
             this.getTransactions()
         ]);
 
-        const currentMonth = new Date().getMonth();
+
         const currentYear = new Date().getFullYear();
 
         // 1. FILTER CONFIRMED INCOME VS PRODUCTION

@@ -7,12 +7,11 @@ import {
     Search,
     PieChart,
     Banknote,
-    TrendingDown,
     TrendingUp,
     Info,
     ChevronDown,
     ChevronUp,
-    HelpCircle
+
 } from 'lucide-react';
 
 // ----------------------------------------------------------------------
@@ -131,8 +130,8 @@ export default function SRI() {
                             {riskHistory?.map((h: any, i: number) => (
                                 <div key={i} className="flex flex-col items-center">
                                     <div className={`w-2 h-2 rounded-full mb-1 ${h.color === 'emerald' ? 'bg-emerald-400' :
-                                            h.color === 'amber' ? 'bg-amber-400' :
-                                                'bg-red-400'
+                                        h.color === 'amber' ? 'bg-amber-400' :
+                                            'bg-red-400'
                                         }`} />
                                     <span className="text-[9px] text-slate-500 font-medium">{h.month}</span>
                                 </div>

@@ -5,8 +5,7 @@ import {
   TrendingDown,
   FileText,
   Target,
-  Users,
-  Settings,
+
   ScrollText,
   LogOut,
   Package,

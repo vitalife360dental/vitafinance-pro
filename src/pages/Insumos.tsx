@@ -3,14 +3,14 @@ import { PageContainer } from '../components/ui/PageContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { Search, Filter, AlertTriangle, TrendingUp, DollarSign, Clock, Settings, RefreshCw, Sliders } from 'lucide-react';
+import { Search, Settings, Sliders } from 'lucide-react';
 import { financeService } from '../services/financeService';
 import { OperationalConfigModal } from '../components/OperationalConfigModal';
 import { useAuth } from '../context/AuthContext';
 
 export default function Insumos() {
     const { role } = useAuth();
-    const [loading, setLoading] = useState(true);
+
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [data, setData] = useState<any[]>([]);
@@ -22,7 +22,7 @@ export default function Insumos() {
     }, []);
 
     const loadData = async () => {
-        setLoading(true);
+
         try {
             // 1. Try to fetch analysis
             let { items, config } = await financeService.getSupplyAnalysis();
@@ -68,7 +68,7 @@ export default function Insumos() {
         } catch (error) {
             console.error(error);
         } finally {
-            setLoading(false);
+
         }
     };
 
@@ -97,9 +97,9 @@ export default function Insumos() {
                     {(role === 'admin' || role === 'super_admin') && (
                         <button
                             onClick={async () => {
-                                setLoading(true);
+
                                 await financeService.initializeDefaultCosts();
-                                await loadData();
+
                             }}
                             className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors"
                             title="Recargar costos predeterminados"

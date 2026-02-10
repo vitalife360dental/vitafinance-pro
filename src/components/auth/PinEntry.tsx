@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Lock, KeyRound, ChevronRight, AlertCircle } from 'lucide-react';
+import { Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export function PinEntry() {
     const { login } = useAuth();
     const [pin, setPin] = useState('');
     const [error, setError] = useState(false);
-    const [loading, setLoading] = useState(false);
+
 
     const handleNumberClick = (num: number) => {
         if (pin.length < 6) {
@@ -24,14 +24,14 @@ export function PinEntry() {
         if (e) e.preventDefault();
         if (pin.length !== 6) return;
 
-        setLoading(true);
+
         const success = await login(pin);
         if (!success) {
             setError(true);
             setPin('');
             // Shake effect could be added here
         }
-        setLoading(false);
+
     };
 
     // Auto-submit when 6 digits are entered
@@ -62,8 +62,8 @@ export function PinEntry() {
                             <div
                                 key={i}
                                 className={`w-4 h-4 rounded-full transition-all duration-300 ${i < pin.length
-                                        ? error ? 'bg-red-500 scale-110' : 'bg-teal-500 scale-110'
-                                        : 'bg-slate-200'
+                                    ? error ? 'bg-red-500 scale-110' : 'bg-teal-500 scale-110'
+                                    : 'bg-slate-200'
                                     }`}
                             />
                         ))}
