@@ -23,8 +23,10 @@ export const aiAssistantService = {
 
     // Format transactions for AI
     const transactionsList = context.transactions.map((t: any) =>
-      `- ${new Date(t.date).toLocaleDateString()}: $${t.amount} (${t.description || t.treatment_name || 'Venta'})`
+      `- ${new Date(t.date).toLocaleDateString()}: $${t.amount} | ${t.description || t.treatment_name || 'Venta'} | Dr: ${t.doctor_name || 'N/A'} | P: ${t.patient_name || 'N/A'}`
     ).join('\n            ');
+
+    console.log("AI CONTEXT TRANSACTIONS:\n", transactionsList); // DEBUG: Check what AI sees
 
     // Format Patients for AI
     const patientsList = context.patients.map((p: any) =>

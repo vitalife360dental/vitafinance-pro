@@ -140,13 +140,21 @@ export const financeService = {
 
         // Map External (Income from transactions)
         const mappedExternal = externalData.map(t => {
+
             // Amount
             const amount = Number(t.amount || 0);
 
             // Date Parsing
-            const dateObj = t.date || t.created_at || new Date().toISOString();
-            const dateStr = String(dateObj).split('T')[0];
-            const timeStr = (String(dateObj).includes('T') ? String(dateObj).split('T')[1].slice(0, 5) : '00:00');
+            // Handle different date formats (Supabase ISO vs potential local strings)
+            const rawDate = t.date || t.created_at || new Date().toISOString();
+            const dateObj = new Date(rawDate);
+
+            // Fallback if invalid date
+            const validDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
+
+            const dateStr = validDate.toISOString().split('T')[0]; // YYYY-MM-DD
+            const timeStr = validDate.toTimeString().slice(0, 5); // HH:MM
+
 
             const diffTime = Math.abs(new Date().getTime() - new Date(dateStr).getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -193,8 +201,9 @@ export const financeService = {
         const merged = [...mappedLocal, ...mappedExternal];
 
         return merged.sort((a, b) => {
-            const dateA = new Date(a.displayDate).getTime();
-            const dateB = new Date(b.displayDate).getTime();
+            // Sort by date descending
+            const dateA = new Date(a.date).getTime(); // Use 'date' property which is standardized to YYYY-MM-DD or ISO
+            const dateB = new Date(b.date).getTime();
             return dateB - dateA;
         });
     },
@@ -1177,7 +1186,7 @@ export const financeService = {
         ] = await Promise.all([
             this.getGoalsAnalytics(),
             this.getProductionAnalytics(),
-            this.getRecentTransactions(15), // Detailed recent history
+            this.getRecentTransactions(50), // Detailed recent history (Boosted to 50 for better context)
             this.getPatients(),
             this.getAranceles(),
             this.getTaxAuditorAnalytics(),
