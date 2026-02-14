@@ -147,20 +147,18 @@ export default function Pagos() {
     };
 
     const removeCategoryRule = async (doctorName: string, category: string) => {
-        // Delete from DB first
+        // 1. Collapse the expanded panel to avoid React DOM reconciliation crash
+        setExpandedDoctor(null);
+
+        // 2. Delete from DB
         try {
             await financeService.deleteDoctorCommissionByName(doctorName, category);
         } catch (e) {
             console.warn('Could not delete from DB:', e);
         }
-        // Then update local state using setTimeout to avoid React reconciliation crash
-        setTimeout(() => {
-            setCommissionRules(prev => {
-                const updated = { ...prev[doctorName] };
-                delete updated[category];
-                return { ...prev, [doctorName]: updated };
-            });
-        }, 0);
+
+        // 3. Reload all data from server (clean state)
+        loadData();
     };
 
     return (
