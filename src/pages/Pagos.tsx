@@ -478,13 +478,17 @@ export default function Pagos() {
                                                             min={1}
                                                             max={100}
                                                             value={rules['_default'] || 33}
-                                                            onChange={(e) => setCommissionRules(prev => ({
-                                                                ...prev,
-                                                                [doctorName]: {
-                                                                    ...prev[doctorName],
-                                                                    '_default': Math.min(100, Math.max(1, Number(e.target.value)))
-                                                                }
-                                                            }))}
+                                                            onFocus={(e) => e.target.select()}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value === '' ? 0 : Math.min(100, Math.max(0, Number(e.target.value)));
+                                                                setCommissionRules(prev => ({
+                                                                    ...prev,
+                                                                    [doctorName]: {
+                                                                        ...prev[doctorName],
+                                                                        '_default': val
+                                                                    }
+                                                                }));
+                                                            }}
                                                             className="w-16 text-right px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#5dc0bb] focus:border-transparent outline-none"
                                                         />
                                                         <span className="text-sm font-bold text-slate-400">%</span>
@@ -511,13 +515,17 @@ export default function Pagos() {
                                                                         min={1}
                                                                         max={100}
                                                                         value={rate}
-                                                                        onChange={(e) => setCommissionRules(prev => ({
-                                                                            ...prev,
-                                                                            [doctorName]: {
-                                                                                ...prev[doctorName],
-                                                                                [cat]: Math.min(100, Math.max(1, Number(e.target.value)))
-                                                                            }
-                                                                        }))}
+                                                                        onFocus={(e) => e.target.select()}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value === '' ? 0 : Math.min(100, Math.max(0, Number(e.target.value)));
+                                                                            setCommissionRules(prev => ({
+                                                                                ...prev,
+                                                                                [doctorName]: {
+                                                                                    ...prev[doctorName],
+                                                                                    [cat]: val
+                                                                                }
+                                                                            }));
+                                                                        }}
                                                                         className="w-16 text-right px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#5dc0bb] focus:border-transparent outline-none"
                                                                     />
                                                                     <span className="text-xs text-slate-400">%</span>
