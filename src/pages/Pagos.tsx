@@ -146,12 +146,21 @@ export default function Pagos() {
         setNewCategoryInputs(prev => ({ ...prev, [doctorName]: '' }));
     };
 
-    const removeCategoryRule = (doctorName: string, category: string) => {
-        setCommissionRules(prev => {
-            const updated = { ...prev[doctorName] };
-            delete updated[category];
-            return { ...prev, [doctorName]: updated };
-        });
+    const removeCategoryRule = async (doctorName: string, category: string) => {
+        // Delete from DB first
+        try {
+            await financeService.deleteDoctorCommissionByName(doctorName, category);
+        } catch (e) {
+            console.warn('Could not delete from DB:', e);
+        }
+        // Then update local state using setTimeout to avoid React reconciliation crash
+        setTimeout(() => {
+            setCommissionRules(prev => {
+                const updated = { ...prev[doctorName] };
+                delete updated[category];
+                return { ...prev, [doctorName]: updated };
+            });
+        }, 0);
     };
 
     return (

@@ -1302,5 +1302,16 @@ export const financeService = {
 
         if (error) throw error;
         return true;
+    },
+
+    async deleteDoctorCommissionByName(doctorName: string, category: string) {
+        const { error } = await supabase
+            .from('vf_doctors')
+            .delete()
+            .eq('name', doctorName)
+            .eq('category', category);
+
+        if (error) throw error;
+        return true;
     }
 };
