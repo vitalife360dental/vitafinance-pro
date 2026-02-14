@@ -55,7 +55,7 @@ export default function Aranceles() {
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 bg-[#5dc0bb]/10 px-3 py-2 rounded-lg border border-[#5dc0bb]/20 text-[#5dc0bb]">
                         <Calculator size={18} />
-                        <span className="text-sm font-bold">Comisión Automática: 33%</span>
+                        <span className="text-sm font-bold">Comisión Variable por Doctor</span>
                     </div>
                 </div>
             </div>
@@ -93,7 +93,7 @@ export default function Aranceles() {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Categoría</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Duración</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Precio P.V.P</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-[#5dc0bb] uppercase tracking-wider text-right bg-[#5dc0bb]/5 border-l border-r border-slate-50">Comisión Dr. (33%)</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-[#5dc0bb] uppercase tracking-wider text-right bg-[#5dc0bb]/5 border-l border-r border-slate-50">Comisión Dr.</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">

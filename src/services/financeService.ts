@@ -316,8 +316,9 @@ export const financeService = {
                 category: t.category || 'General',
                 duration: t.duration || '30 min',
                 price: price,
-                commission: price * 0.33, // 33% calculation
-                doctor_commission: price * 0.33, // Alias for clarity
+                // Commission is now calculated dynamically per-doctor
+                commission: price * 0.33, // Default display (overridden per-doctor in production)
+                doctor_commission: price * 0.33, // Default display
                 source: 'DentalFlow'
             };
         });
@@ -470,15 +471,37 @@ export const financeService = {
 
     // --- Production Analytics Engine 🏭 ---
     async getProductionAnalytics() {
-        // 1. Fetch Base Data
-        const [transactions, treatments] = await Promise.all([
+        // 1. Fetch Base Data + Doctor Commission Rules
+        const [transactions, treatments, commissionRules] = await Promise.all([
             this.getTransactions(),
-            this.getAranceles()
+            this.getAranceles(),
+            this.getDoctorCommissions()
         ]);
 
-        // Helper for robust matching (Same as Insumos)
         const normalize = (str: string) =>
             str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
+
+        // Build cascading commission lookup: doctor+category > doctor+_default > 33%
+        // Key format: "doctorname::category" or "doctorname::_default"
+        const commissionMap: Record<string, number> = {};
+        commissionRules.forEach((rule: any) => {
+            const doctorName = rule.name || rule.doctor_name || '';
+            const category = rule.category || '_default';
+            const key = `${normalize(doctorName)}::${normalize(category)}`;
+            commissionMap[key] = Number(rule.commission_rate) / 100;
+        });
+
+        const getCommissionRate = (doctorName: string, treatmentCategory: string): number => {
+            const docKey = normalize(doctorName);
+            // 1. Try doctor + specific category
+            const specificKey = `${docKey}::${normalize(treatmentCategory)}`;
+            if (commissionMap[specificKey] !== undefined) return commissionMap[specificKey];
+            // 2. Try doctor + _default
+            const defaultKey = `${docKey}::_default`;
+            if (commissionMap[defaultKey] !== undefined) return commissionMap[defaultKey];
+            // 3. Global fallback
+            return 0.33;
+        };
 
         // Linked Map as per Insumos Logic
         const NAME_MAPPING: Record<string, string> = {
@@ -501,29 +524,31 @@ export const financeService = {
         // 2. Filter for Income (Production)
         const incomeTx = transactions.filter(t => t.type === 'income');
 
-        // 3. Process each transaction to calculate margins
+        // 3. Process each transaction with PER-DOCTOR + PER-CATEGORY commission
         const processedOps = incomeTx.map(tx => {
+            const doctorName = tx.doctor_name || 'Dr. General';
+
             // Find relevant tariff/arancel based on treatment name
-            // Smart Match Logic
             let searchName = normalize(tx.treatment_name || tx.description);
             if (NAME_MAPPING[searchName]) {
                 searchName = normalize(NAME_MAPPING[searchName]);
             }
 
-            // Try to find treatment by fuzzy match
             const relatedTreatment = treatments.find(t => {
                 const tName = normalize(t.name);
                 return tName === searchName || searchName.includes(tName);
             });
 
-            // Commission Logic: Use verified 33%. If no match, assume 33% of amount (Fail-safe)
-            // Ideally we want to be exact. If no relatedTreatment, we default to 33% of the invoiced amount.
-            const tariffCost = relatedTreatment
-                ? (Number(relatedTreatment.price) * 0.33)
-                : (Number(tx.amount) * 0.33);
+            // Get the treatment's category for commission resolution
+            const treatmentCategory = relatedTreatment?.category || 'General';
+            const commissionRate = getCommissionRate(doctorName, treatmentCategory);
 
-            // Estimated Supplies (Insumos) - Rule of thumb: 15% of price if not specified
-            // (In a future update, we could link this to vf_treatment_costs too for 100% precision)
+            // Commission uses the resolved rate
+            const tariffCost = relatedTreatment
+                ? (Number(relatedTreatment.price) * commissionRate)
+                : (Number(tx.amount) * commissionRate);
+
+            // Estimated Supplies (Insumos) - Rule of thumb: 15%
             const suppliesCost = Number(tx.amount) * 0.15;
 
             const netUtility = Number(tx.amount) - tariffCost - suppliesCost;
@@ -533,8 +558,10 @@ export const financeService = {
                 tariffCost,
                 suppliesCost,
                 netUtility,
+                commissionRate, // Attach rate for UI display
+                treatmentCategory, // Attach category for transparency
                 chair: tx.chair || 'Sillón Indefinido',
-                doctor: tx.doctor_name || 'Dr. General'
+                doctor: doctorName
             };
         });
 
@@ -563,11 +590,18 @@ export const financeService = {
             hourlyRate: c.hours > 0 ? (c.utility / c.hours) : 0
         }));
 
-        // C. By Doctor
+        // C. By Doctor (now includes per-doctor commission rate)
         const doctorsDict: Record<string, any> = {};
         processedOps.forEach(op => {
             if (!doctorsDict[op.doctor]) {
-                doctorsDict[op.doctor] = { name: op.doctor, attentions: 0, billing: 0, tariffs: 0, netContribution: 0 };
+                doctorsDict[op.doctor] = {
+                    name: op.doctor,
+                    attentions: 0,
+                    billing: 0,
+                    tariffs: 0,
+                    netContribution: 0,
+                    commissionRate: op.commissionRate // Store the rate for display
+                };
             }
             doctorsDict[op.doctor].attentions += 1;
             doctorsDict[op.doctor].billing += Number(op.amount);
@@ -1206,5 +1240,67 @@ export const financeService = {
             financialHistory,
             clinicConfig
         };
+    },
+
+    // --- Doctor Commission Config (per doctor + category) ---
+
+    async getDoctorCommissions() {
+        try {
+            const { data, error } = await supabase
+                .from('vf_doctors')
+                .select('*')
+                .order('name');
+
+            if (error) {
+                console.warn('vf_doctors table not available:', error.message);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.warn('Could not fetch doctor commissions:', e);
+            return [];
+        }
+    },
+
+    async upsertDoctorCommission(doctorName: string, category: string, commissionRate: number) {
+        // Try with category column first (upgraded schema)
+        const { data, error } = await supabase
+            .from('vf_doctors')
+            .upsert(
+                { name: doctorName, category, commission_rate: commissionRate },
+                { onConflict: 'name,category' }
+            )
+            .select()
+            .single();
+
+        if (error) {
+            // If category column doesn't exist, fall back to simple upsert
+            if (error.message?.includes('category') || error.code === 'PGRST204') {
+                console.warn('category column not found, using fallback save (name + commission_rate only)');
+                const { data: fallbackData, error: fallbackError } = await supabase
+                    .from('vf_doctors')
+                    .upsert(
+                        { name: doctorName, commission_rate: commissionRate },
+                        { onConflict: 'name' }
+                    )
+                    .select()
+                    .single();
+
+                if (fallbackError) throw fallbackError;
+                return fallbackData;
+            }
+            throw error;
+        }
+        return data;
+    },
+
+    async deleteDoctorCommission(id: string) {
+        const { error } = await supabase
+            .from('vf_doctors')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        return true;
     }
 };

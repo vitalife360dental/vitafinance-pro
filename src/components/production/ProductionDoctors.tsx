@@ -63,7 +63,10 @@ export default function ProductionDoctors({ data }: { data: any }) {
                                             ${doc.billing.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 text-right font-medium text-orange-500">
-                                            -${doc.tariffs.toFixed(2)}
+                                            <div className="flex flex-col items-end">
+                                                <span>-${doc.tariffs.toFixed(2)}</span>
+                                                <span className="text-[10px] text-orange-400">{Math.round((doc.commissionRate || 0.33) * 100)}%</span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <span className="font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">
