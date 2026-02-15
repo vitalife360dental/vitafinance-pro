@@ -36,7 +36,7 @@ export default function Pagos() {
         loadData();
     }, []);
 
-    const loadData = async () => {
+    const loadData = async (overrideRules?: Record<string, Record<string, number>>) => {
 
         try {
             const [production, transactionsData, cats, dbCommissions, aranceles] = await Promise.all([
@@ -53,14 +53,17 @@ export default function Pagos() {
             const uniqueCategories = [...new Set((aranceles || []).map((a: any) => a.category).filter(Boolean))];
             setTreatmentCategories(uniqueCategories.sort());
 
-            // Build commission rules map from DB
-            const rulesMap: Record<string, Record<string, number>> = {};
-            (dbCommissions || []).forEach((rule: any) => {
-                const docName = rule.name || rule.doctor_name || '';
-                const category = rule.category || '_default';
-                if (!rulesMap[docName]) rulesMap[docName] = {};
-                rulesMap[docName][category] = Number(rule.commission_rate);
-            });
+            // Build commission rules map from DB OR use override
+            let rulesMap: Record<string, Record<string, number>> = overrideRules || {};
+
+            if (!overrideRules) {
+                (dbCommissions || []).forEach((rule: any) => {
+                    const docName = rule.name || rule.doctor_name || '';
+                    const category = rule.category || '_default';
+                    if (!rulesMap[docName]) rulesMap[docName] = {};
+                    rulesMap[docName][category] = Number(rule.commission_rate);
+                });
+            }
 
             // 2. Get Expenses (Actual Payments)
             const payments = transactionsData.filter((t: any) => t.type === 'expense');
@@ -87,7 +90,8 @@ export default function Pagos() {
                     docPayments: docPaymentsTotal,
                     paymentsList: docPaymentsList,
                     balance,
-                    commissionPercent: Math.round((doc.commissionRate || 0.33) * 100)
+                    // Use the base rate we just fetched/calculated, not the one from analytics which might be partial
+                    commissionPercent: (rulesMap[doc.name]['_default'] || 33)
                 };
             });
 
@@ -133,8 +137,10 @@ export default function Pagos() {
             // Show toast AFTER modal is closed
             setSaveToast({ message: `✅ Guardado exitoso (${saved} reglas)`, type: 'success' });
             setTimeout(() => setSaveToast(null), 4000);
-            // Reload data in background
-            await loadData();
+
+            // Reload data with override rules to ensure UI updates immediately
+            // We pass the current local state so we don't wait for stale DB read
+            setTimeout(() => loadData(commissionRules), 500);
         } catch (error: any) {
             console.error('Error saving commissions:', error);
             const msg = error?.message || 'Error desconocido';
