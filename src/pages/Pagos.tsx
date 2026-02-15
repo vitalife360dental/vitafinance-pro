@@ -29,6 +29,7 @@ export default function Pagos() {
     const [newCategoryInputs, setNewCategoryInputs] = useState<Record<string, string>>({});
     const [treatmentCategories, setTreatmentCategories] = useState<string[]>([]);
     const [savingConfig, setSavingConfig] = useState(false);
+    const [editingField, setEditingField] = useState<{ doctor: string; cat: string; original: number } | null>(null);
 
     useEffect(() => {
         loadData();
@@ -116,14 +117,17 @@ export default function Pagos() {
     const handleSaveCommissions = async () => {
         setSavingConfig(true);
         try {
+            let saved = 0;
             for (const [doctorName, categories] of Object.entries(commissionRules)) {
                 for (const [category, rate] of Object.entries(categories)) {
                     await financeService.upsertDoctorCommission(doctorName, category, rate);
+                    saved++;
                 }
             }
             setIsConfigModalOpen(false);
             setExpandedDoctor(null);
             loadData();
+            alert(`✅ Guardado exitoso (${saved} reglas guardadas)`);
         } catch (error: any) {
             console.error('Error saving commissions:', error);
             const msg = error?.message || 'Error desconocido';
@@ -477,8 +481,27 @@ export default function Pagos() {
                                                             type="text"
                                                             inputMode="numeric"
                                                             pattern="[0-9]*"
-                                                            value={rules['_default'] || 33}
-                                                            onFocus={(e) => e.target.select()}
+                                                            value={editingField?.doctor === doctorName && editingField?.cat === '_default' ? (rules['_default'] === 0 ? '' : rules['_default']) : (rules['_default'] || 33)}
+                                                            onFocus={(e) => {
+                                                                const current = rules['_default'] || 33;
+                                                                setEditingField({ doctor: doctorName, cat: '_default', original: current });
+                                                                e.target.value = '';
+                                                                setCommissionRules(prev => ({
+                                                                    ...prev,
+                                                                    [doctorName]: { ...prev[doctorName], '_default': 0 }
+                                                                }));
+                                                            }}
+                                                            onBlur={() => {
+                                                                const current = rules['_default'];
+                                                                if (!current || current === 0) {
+                                                                    const restore = editingField?.original || 33;
+                                                                    setCommissionRules(prev => ({
+                                                                        ...prev,
+                                                                        [doctorName]: { ...prev[doctorName], '_default': restore }
+                                                                    }));
+                                                                }
+                                                                setEditingField(null);
+                                                            }}
                                                             onChange={(e) => {
                                                                 const raw = e.target.value.replace(/[^0-9]/g, '');
                                                                 const val = raw === '' ? 0 : Math.min(100, Number(raw));
@@ -515,8 +538,26 @@ export default function Pagos() {
                                                                         type="text"
                                                                         inputMode="numeric"
                                                                         pattern="[0-9]*"
-                                                                        value={rate}
-                                                                        onFocus={(e) => e.target.select()}
+                                                                        value={editingField?.doctor === doctorName && editingField?.cat === cat ? (rate === 0 ? '' : rate) : rate}
+                                                                        onFocus={(e) => {
+                                                                            setEditingField({ doctor: doctorName, cat, original: rate });
+                                                                            e.target.value = '';
+                                                                            setCommissionRules(prev => ({
+                                                                                ...prev,
+                                                                                [doctorName]: { ...prev[doctorName], [cat]: 0 }
+                                                                            }));
+                                                                        }}
+                                                                        onBlur={() => {
+                                                                            const current = rules[cat];
+                                                                            if (!current || current === 0) {
+                                                                                const restore = editingField?.original || 33;
+                                                                                setCommissionRules(prev => ({
+                                                                                    ...prev,
+                                                                                    [doctorName]: { ...prev[doctorName], [cat]: restore }
+                                                                                }));
+                                                                            }
+                                                                            setEditingField(null);
+                                                                        }}
                                                                         onChange={(e) => {
                                                                             const raw = e.target.value.replace(/[^0-9]/g, '');
                                                                             const val = raw === '' ? 0 : Math.min(100, Number(raw));
