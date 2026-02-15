@@ -30,6 +30,7 @@ export default function Pagos() {
     const [treatmentCategories, setTreatmentCategories] = useState<string[]>([]);
     const [savingConfig, setSavingConfig] = useState(false);
     const [editingField, setEditingField] = useState<{ doctor: string; cat: string; original: number } | null>(null);
+    const [saveToast, setSaveToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
         loadData();
@@ -124,16 +125,22 @@ export default function Pagos() {
                     saved++;
                 }
             }
-            setIsConfigModalOpen(false);
+            // Close modal and clear state
+            setEditingField(null);
             setExpandedDoctor(null);
-            loadData();
-            alert(`✅ Guardado exitoso (${saved} reglas guardadas)`);
+            setIsConfigModalOpen(false);
+            setSavingConfig(false);
+            // Show toast AFTER modal is closed
+            setSaveToast({ message: `✅ Guardado exitoso (${saved} reglas)`, type: 'success' });
+            setTimeout(() => setSaveToast(null), 4000);
+            // Reload data in background
+            await loadData();
         } catch (error: any) {
             console.error('Error saving commissions:', error);
             const msg = error?.message || 'Error desconocido';
-            alert(`❌ Error al guardar: ${msg}\n\nSi el error menciona "category", ejecuta el SQL de actualización en Supabase.`);
-        } finally {
             setSavingConfig(false);
+            setSaveToast({ message: `❌ Error: ${msg}`, type: 'error' });
+            setTimeout(() => setSaveToast(null), 6000);
         }
     };
 
@@ -167,6 +174,22 @@ export default function Pagos() {
 
     return (
         <PageContainer>
+            {/* Toast Notification */}
+            {saveToast && (
+                <div style={{
+                    position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 9999, padding: '14px 28px', borderRadius: '12px',
+                    color: 'white', fontSize: '15px', fontWeight: 600,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                    background: saveToast.type === 'success'
+                        ? 'linear-gradient(135deg, #10b981, #059669)'
+                        : 'linear-gradient(135deg, #ef4444, #dc2626)',
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    {saveToast.message}
+                </div>
+            )}
+
             <PageHeader
                 title="Gestión de Pagos y Nómina"
                 subtitle="Control de comisiones médicas y registro de honorarios."
