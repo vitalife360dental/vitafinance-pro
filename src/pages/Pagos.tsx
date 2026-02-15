@@ -474,13 +474,14 @@ export default function Pagos() {
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs text-slate-400">Base:</span>
                                                         <input
-                                                            type="number"
-                                                            min={1}
-                                                            max={100}
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
                                                             value={rules['_default'] || 33}
                                                             onFocus={(e) => e.target.select()}
                                                             onChange={(e) => {
-                                                                const val = e.target.value === '' ? 0 : Math.min(100, Math.max(0, Number(e.target.value)));
+                                                                const raw = e.target.value.replace(/[^0-9]/g, '');
+                                                                const val = raw === '' ? 0 : Math.min(100, Number(raw));
                                                                 setCommissionRules(prev => ({
                                                                     ...prev,
                                                                     [doctorName]: {
@@ -511,13 +512,14 @@ export default function Pagos() {
                                                                 </span>
                                                                 <div className="flex items-center gap-2">
                                                                     <input
-                                                                        type="number"
-                                                                        min={1}
-                                                                        max={100}
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        pattern="[0-9]*"
                                                                         value={rate}
                                                                         onFocus={(e) => e.target.select()}
                                                                         onChange={(e) => {
-                                                                            const val = e.target.value === '' ? 0 : Math.min(100, Math.max(0, Number(e.target.value)));
+                                                                            const raw = e.target.value.replace(/[^0-9]/g, '');
+                                                                            const val = raw === '' ? 0 : Math.min(100, Number(raw));
                                                                             setCommissionRules(prev => ({
                                                                                 ...prev,
                                                                                 [doctorName]: {
