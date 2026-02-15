@@ -482,10 +482,9 @@ export default function Pagos() {
                                                             inputMode="numeric"
                                                             pattern="[0-9]*"
                                                             value={editingField?.doctor === doctorName && editingField?.cat === '_default' ? (rules['_default'] === 0 ? '' : rules['_default']) : (rules['_default'] || 33)}
-                                                            onFocus={(e) => {
+                                                            onFocus={() => {
                                                                 const current = rules['_default'] || 33;
                                                                 setEditingField({ doctor: doctorName, cat: '_default', original: current });
-                                                                e.target.value = '';
                                                                 setCommissionRules(prev => ({
                                                                     ...prev,
                                                                     [doctorName]: { ...prev[doctorName], '_default': 0 }
@@ -539,9 +538,8 @@ export default function Pagos() {
                                                                         inputMode="numeric"
                                                                         pattern="[0-9]*"
                                                                         value={editingField?.doctor === doctorName && editingField?.cat === cat ? (rate === 0 ? '' : rate) : rate}
-                                                                        onFocus={(e) => {
+                                                                        onFocus={() => {
                                                                             setEditingField({ doctor: doctorName, cat, original: rate });
-                                                                            e.target.value = '';
                                                                             setCommissionRules(prev => ({
                                                                                 ...prev,
                                                                                 [doctorName]: { ...prev[doctorName], [cat]: 0 }
