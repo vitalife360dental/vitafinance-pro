@@ -35,7 +35,7 @@ export const aiAssistantService = {
 
     // Format Treatments for AI
     const treatmentsList = context.treatments.map((t: any) =>
-      `- ${t.name}: $${t.price} (Costo: $${t.totalCost?.toFixed(2) || '?'}, Margen: ${t.margin?.toFixed(0)}%)`
+      `- ${t.name}: $${t.price} (Mat: $${t.supplyCost?.toFixed(2) || '0'}, Lab: $${t.labCost?.toFixed(2) || '0'}, Margen: ${t.margin?.toFixed(0)}%)`
     ).join('\n            ');
 
     // Construct System Prompt
@@ -52,6 +52,7 @@ export const aiAssistantService = {
             • Costos Fijos Mensuales: $${clinicConfig.FIXED_COSTS_MONTHLY}
             • Horas Operativas: ${clinicConfig.OPERATIONAL_HOURS_MONTHLY}h/mes
             • Costo Operativo por Minuto: $${(supplyAnalysis.config?.costPerMinute || 0).toFixed(2)}
+            • **IMPORTANTE**: Los pagos a doctores (aranceles) se calculan sobre el **(Precio - Costo Laboratorio)**. Los materiales clínicos no afectan el pago al doctor.
 
             ────────────────────────
             📈 REGLAS DE ARANCEL (SISTEMA DE PAGOS)

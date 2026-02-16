@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { PageContainer } from '../components/ui/PageContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
@@ -90,7 +90,7 @@ export default function Insumos() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <PageHeader
                     title="Análisis de Rentabilidad Real"
-                    subtitle="Control de costos, insumos y gastos operativos por tratamiento."
+                    subtitle="Control de costos de materiales clínicos, piezas de laboratorio y gastos operativos."
                 />
                 <div className="flex items-center gap-3">
                     {/* Only Admin can sync defaults */}
@@ -122,7 +122,10 @@ export default function Insumos() {
 
                     <div className="flex flex-col items-end mr-4">
                         <span className="text-[10px] uppercase font-bold text-slate-400">Costo Operativo (Sillón)</span>
-                        <span className="text-lg font-bold text-slate-700">${config.costPerMinute?.toFixed(2)} <span className="text-xs text-slate-400">/ min</span></span>
+                        <span className="text-lg font-bold text-slate-700">
+                            <span>${config.costPerMinute?.toFixed(2)}</span>
+                            <span className="text-xs text-slate-400"> / min</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -130,28 +133,27 @@ export default function Insumos() {
             {/* Chair Productivity Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 {chairStats.map((chair, index) => (
-                    <Card key={chair.name} className="relative overflow-hidden border-slate-200">
+                    <Card key={`chair-${chair.name}-${index}`} className="relative overflow-hidden border-slate-200">
                         <div className={`absolute top-0 left-0 w-1 h-full ${index === 0 ? 'bg-amber-400' : 'bg-slate-200'}`}></div>
                         <div className="p-4">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
                                     <h3 className="font-bold text-slate-700">
-                                        {(chair.name === '-' || !chair.name) ? 'Sin Asignar / Varios' : chair.name}
+                                        <span>{(chair.name === '-' || !chair.name) ? 'Sin Asignar / Varios' : chair.name}</span>
                                     </h3>
-                                    <p className="text-xs text-slate-400">{chair.hours.toFixed(1)} horas ocupadas</p>
+                                    <p className="text-xs text-slate-400"><span>{chair.hours.toFixed(1)}</span> horas ocupadas</p>
                                 </div>
-                                {index === 0 && <Badge variant="warning" className="text-[10px]">👑 Líder</Badge>}
+                                {index === 0 && <Badge variant="warning" className="text-[10px]"><span>👑 Líder</span></Badge>}
                             </div>
-
                             <div className="flex justify-between items-end mt-4">
                                 <div>
-                                    <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Ingreso</span>
-                                    <div className="text-xl font-bold text-slate-800">${chair.income.toFixed(2)}</div>
+                                    <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider"><span>Ingreso</span></span>
+                                    <div className="text-xl font-bold text-slate-800"><span>${chair.income.toFixed(2)}</span></div>
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Prod / Hora</span>
+                                    <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider"><span>Prod / Hora</span></span>
                                     <div className={`text-xl font-bold ${chair.revenuePerHour > (config.costPerMinute * 60) ? 'text-emerald-600' : 'text-red-500'}`}>
-                                        ${chair.revenuePerHour.toFixed(2)}
+                                        <span>${chair.revenuePerHour.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -183,77 +185,95 @@ export default function Insumos() {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tratamiento</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Duración</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Precio</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-red-400 uppercase tracking-wider text-right bg-red-50/10">(-) Coms (33%)</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-amber-500 uppercase tracking-wider text-right bg-amber-50/30">(-) Laboratorio</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-red-400 uppercase tracking-wider text-right bg-red-50/10">(-) Arancel</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-orange-500 uppercase tracking-wider text-right bg-orange-50/30">(-) Materiales</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-indigo-500 uppercase tracking-wider text-right bg-indigo-50/30">(-) Laboratorio</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right bg-slate-100/50">(-) Op. Sillón</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-emerald-600 uppercase tracking-wider text-right bg-emerald-50/30 border-l border-emerald-100">(=) Utilidad Real</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Margen</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {Object.keys(groupedItems).map(category => (
-                                <>
-                                    {/* Category Header */}
-                                    <tr key={category} className="bg-slate-50 border-b border-slate-200">
-                                        <td colSpan={8} className="px-6 py-3">
-                                            <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{category}</span>
+                            {Object.entries(groupedItems).map(([category, items]: [string, any], idx) => (
+                                <Fragment key={`cat-${category}-${idx}`}>
+                                    <tr className="bg-white/50 border-b border-slate-100">
+                                        <td colSpan={9} className="px-6 py-3 bg-slate-50/50">
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]"><span>{category || 'General'}</span></span>
                                         </td>
                                     </tr>
-                                    {/* Items */}
-                                    {groupedItems[category].map((item: any) => (
-                                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    {items.map((item: any) => (
+                                        <tr key={`${item.id}-${item.name}`} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4 font-bold text-slate-800">
-                                                {item.name}
+                                                <span>{item.name}</span>
                                                 <div className="text-[10px] text-slate-400 font-normal">{item.category}</div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <Badge variant="neutral" className="text-xs">{item.finalDuration} min</Badge>
+                                                <Badge variant="neutral" className="text-xs"><span>{item.finalDuration} min</span></Badge>
                                             </td>
                                             <td className="px-6 py-4 text-right font-medium text-slate-800 bg-white">
-                                                ${item.price.toFixed(2)}
+                                                <span>${item.price.toFixed(2)}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right text-red-500 text-xs bg-red-50/10">
-                                                -${item.doctor_commission.toFixed(2)}
+                                                <span>-${item.doctor_commission.toFixed(2)}</span>
                                             </td>
-                                            <td className="px-6 py-4 text-right font-medium bg-amber-50/30 p-0 relative group-hover:bg-amber-100/30 transition-colors">
+                                            <td className="px-6 py-4 text-right font-medium bg-orange-50/30 p-0 relative group-hover:bg-orange-100/30 transition-colors">
                                                 <div className="flex items-center justify-end px-6 py-4">
-                                                    <span className="text-amber-600 mr-1">-$</span>
+                                                    <span className="text-orange-600 mr-1">-$</span>
                                                     <input
                                                         type="number"
                                                         step="0.10"
-                                                        className="w-16 bg-transparent text-right border-b border-dashed border-amber-300 focus:border-amber-600 focus:outline-none text-amber-700 font-bold"
-                                                        defaultValue={item.supplyCost.toFixed(2)}
+                                                        className="w-16 bg-transparent text-right border-b border-dashed border-orange-300 focus:border-orange-600 focus:outline-none text-orange-700 font-bold"
+                                                        defaultValue={item.supplyCost?.toFixed(2) || '0.00'}
                                                         onBlur={async (e) => {
                                                             const newVal = parseFloat(e.target.value);
-                                                            if (!isNaN(newVal) && newVal !== item.supplyCost) {
-                                                                await financeService.updateTreatmentCost(item.name, newVal);
-                                                                loadData(); // Refresh to recalc totals
+                                                            if (!isNaN(newVal)) {
+                                                                await financeService.updateTreatmentCost(item.name, newVal, 'supply');
+                                                                loadData();
                                                             }
                                                         }}
                                                         onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                e.currentTarget.blur();
+                                                            if (e.key === 'Enter') e.currentTarget.blur();
+                                                        }}
+                                                    />
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-medium bg-indigo-50/30 p-0 relative group-hover:bg-indigo-100/30 transition-colors">
+                                                <div className="flex items-center justify-end px-6 py-4">
+                                                    <span className="text-indigo-600 mr-1">-$</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.10"
+                                                        className="w-16 bg-transparent text-right border-b border-dashed border-indigo-300 focus:border-indigo-600 focus:outline-none text-indigo-700 font-bold"
+                                                        defaultValue={item.labCost?.toFixed(2) || '0.00'}
+                                                        onBlur={async (e) => {
+                                                            const newVal = parseFloat(e.target.value);
+                                                            if (!isNaN(newVal)) {
+                                                                await financeService.updateTreatmentCost(item.name, newVal, 'lab');
+                                                                loadData();
                                                             }
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') e.currentTarget.blur();
                                                         }}
                                                     />
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right text-slate-500 text-xs bg-slate-100/50">
-                                                -${item.overheadCost.toFixed(2)}
+                                                <span>-${item.overheadCost.toFixed(2)}</span>
                                             </td>
                                             <td className={`px-6 py-4 text-right font-bold text-sm bg-emerald-50/30 border-l border-emerald-100 ${item.netProfit < 0 ? 'text-red-500' : 'text-emerald-700'}`}>
-                                                ${item.netProfit.toFixed(2)}
+                                                <span>${item.netProfit.toFixed(2)}</span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <Badge
                                                     variant={item.profitabilityStatus === 'critical' ? 'error' : item.profitabilityStatus === 'warning' ? 'warning' : 'success'}
                                                 >
-                                                    {item.margin.toFixed(0)}%
+                                                    <span>{item.margin.toFixed(0)}%</span>
                                                 </Badge>
                                             </td>
                                         </tr>
                                     ))}
-                                </>
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>
@@ -269,6 +289,6 @@ export default function Insumos() {
                     await loadData();
                 }}
             />
-        </PageContainer>
+        </PageContainer >
     );
 }

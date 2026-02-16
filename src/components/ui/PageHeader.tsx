@@ -11,10 +11,10 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-14">
             <div>
                 <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
-                    {title}
+                    <span>{title}</span>
                 </h1>
                 {subtitle && (
-                    <p className="text-slate-500 font-medium mt-2">{subtitle}</p>
+                    <p className="text-slate-500 font-medium mt-2"><span>{subtitle}</span></p>
                 )}
             </div>
 

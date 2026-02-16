@@ -483,10 +483,10 @@ export const financeService = {
             str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
 
         // Build mapping for special treatment costs (Lab costs)
-        const costMap: Record<string, number> = {};
+        const costMap: Record<string, any> = {};
         (treatmentCosts.data || []).forEach((c: any) => {
             if (c.treatment_name) {
-                costMap[normalize(c.treatment_name)] = Number(c.supply_cost || 0);
+                costMap[normalize(c.treatment_name)] = c;
             }
         });
 
@@ -565,15 +565,16 @@ export const financeService = {
             const commissionRate = getCommissionRate(doctorName, treatmentCategory, lookupName);
 
             // Special Costs Deduction (Lab costs) - Priority: Match by normalization
-            const labCost = costMap[normalize(lookupName)] || 0;
+            const treatmentCostData = costMap[normalize(lookupName)] || {};
+            const labCost = Number(treatmentCostData.lab_cost || 0);
 
-            // Subtotal for commission: Subtract lab cost from billed amount
-            const subtotalForCommission = Math.max(0, Number(tx.amount) - labCost);
+            // Subtotal for arancel: Subtract lab cost from billed amount
+            const subtotalForArancel = Math.max(0, Number(tx.amount) - labCost);
 
-            // Commission calculation: based on subtotal (billed amount minus lab)
-            const tariffCost = (subtotalForCommission * commissionRate);
+            // Arancel calculation: based on subtotal (billed amount minus lab)
+            const tariffCost = (subtotalForArancel * commissionRate);
 
-            // Estimated Supplies (Insumos) - Rule of thumb: 15% (on the full amount or subtotal?)
+            // Estimated Supplies (Materiales) - Rule of thumb: 15% 
             // Usually clinic supplies are separate from external lab costs.
             const suppliesCost = Number(tx.amount) * 0.15;
 
@@ -959,10 +960,11 @@ export const financeService = {
             // Costs
             const commission = t.doctor_commission; // Already calculated as 33% in getAranceles
             const supplyCost = Number(localCost.supply_cost || 0);
+            const labCost = Number(localCost.lab_cost || 0);
             const overheadCost = finalDuration * costPerMinute;
 
             // Profit
-            const totalCost = commission + supplyCost + overheadCost;
+            const totalCost = commission + supplyCost + labCost + overheadCost;
             const netProfit = t.price - totalCost;
             const margin = t.price > 0 ? (netProfit / t.price) * 100 : 0;
 
@@ -975,6 +977,7 @@ export const financeService = {
                 ...t,
                 finalDuration,
                 supplyCost,
+                labCost,
                 overheadCost,
                 totalCost,
                 netProfit,
@@ -993,17 +996,21 @@ export const financeService = {
         };
     },
 
-    async updateTreatmentCost(treatmentName: string, newCost: number) {
-        // Upsert the cost. category_group is required but we might not want to change it if it exists.
-        // We assume category is handled or we default it.
-        // Since we are matching by name, upsert with name is safer.
+    async updateTreatmentCost(treatmentName: string, newValue: number, type: 'supply' | 'lab' = 'supply') {
+        const updateData: any = {
+            treatment_name: treatmentName,
+            updated_at: new Date().toISOString()
+        };
+
+        if (type === 'lab') {
+            updateData.lab_cost = newValue;
+        } else {
+            updateData.supply_cost = newValue;
+        }
+
         const { error } = await supabase
             .from('vf_treatment_costs')
-            .upsert({
-                treatment_name: treatmentName, // normalized if possible
-                supply_cost: newCost,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'treatment_name' });
+            .upsert(updateData, { onConflict: 'treatment_name' });
 
         if (error) {
             console.error('Error updating cost:', error);
@@ -1098,15 +1105,28 @@ export const financeService = {
 
         // Bulk Upsert using Promise.all for parallelism
         // Note: Supabase upsert accepts an array.
+        const labTreatments = [
+            'IMPLANTE CIRUGIA', 'CORONA ZIRCONIA', 'PUENTE FIJO 3 PIEZAS',
+            'PROTESIS TOTAL', 'PROTESIS CROMO COBALTO', 'INCRUSTACION DE CIRCONIO',
+            'CARILLA PORCELANA', 'DISENO DE CERAMICA', 'DISEÑO DE CERÁMICA',
+            'DISEÑO DE SONRISA', 'DISENO DE SONRISA', 'PUENTE FIJO 3 PIEZAS'
+        ];
+
         const { error } = await supabase
             .from('vf_treatment_costs')
             .upsert(
-                DEFAULT_COSTS.map(item => ({
-                    treatment_name: item.name,
-                    category_group: item.group,
-                    supply_cost: item.cost,
-                    updated_at: new Date().toISOString()
-                })),
+                DEFAULT_COSTS.map(item => {
+                    const normalizedName = item.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                    const isLab = labTreatments.includes(normalizedName) || item.group.includes('PRÓTESIS');
+
+                    return {
+                        treatment_name: item.name,
+                        category_group: item.group,
+                        supply_cost: isLab ? 2.50 : item.cost, // Default material overhead for lab items
+                        lab_cost: isLab ? item.cost : 0,
+                        updated_at: new Date().toISOString()
+                    };
+                }),
                 { onConflict: 'treatment_name' }
             );
 
