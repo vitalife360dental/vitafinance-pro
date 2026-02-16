@@ -137,39 +137,31 @@ export default function Ingresos() {
     // Filter based on Tab AND Search
     // Filter based on Tab AND Search
     const filteredTransactions = transactions.filter(t => {
-        // Tab Filter
-
-        // External data (not 'VitaFinance') should ALWAYS be in Treatments
-        // If source is undefined, assume it's external (legacy/safe fallback) or handle accordingly. 
-        // Based on financeService, local has 'VitaFinance', external has 'DentalFlow'.
+        // Tab Filter logic
         const isExternal = t.source !== 'VitaFinance';
-
-        // For local data (VitaFinance), we check if it has a doctor
         const hasDoctor = !!t.doctor_name && t.doctor_name !== '-';
 
         if (activeTab === 'treatments') {
-            // Show if it's external OR (local AND has doctor)
-            if (isExternal) return true;
-            if (!hasDoctor) return false;
-        }
-
-        if (activeTab === 'others') {
-            // Show ONLY if it's local AND has no doctor
-            if (isExternal) return false;
-            // Also exclude if it IS a treatment (has doctor)
-            if (hasDoctor) return false;
+            // Must be external OR (local AND have a doctor)
+            const belongsToTreatments = isExternal || hasDoctor;
+            if (!belongsToTreatments) return false;
+        } else {
+            // Must be local AND NOT have a doctor (Other Incomes)
+            const belongsToOthers = !isExternal && !hasDoctor;
+            if (!belongsToOthers) return false;
         }
 
         // Search Filter
         const searchLower = searchTerm.toLowerCase();
-        const matchesSearch = (
-            t.treatment_name?.toLowerCase().includes(searchLower) ||
-            t.patient_name?.toLowerCase().includes(searchLower) ||
-            t.description?.toLowerCase().includes(searchLower) ||
-            (t.invoice_number && String(t.invoice_number).toLowerCase().includes(searchLower))
-        );
-
-        if (!matchesSearch) return false;
+        if (searchLower) {
+            const matchesSearch = (
+                t.treatment_name?.toLowerCase().includes(searchLower) ||
+                t.patient_name?.toLowerCase().includes(searchLower) ||
+                t.description?.toLowerCase().includes(searchLower) ||
+                (t.invoice_number && String(t.invoice_number).toLowerCase().includes(searchLower))
+            );
+            if (!matchesSearch) return false;
+        }
 
         // Date Range Filter
         if (showFilters && (dateRange.start || dateRange.end)) {
