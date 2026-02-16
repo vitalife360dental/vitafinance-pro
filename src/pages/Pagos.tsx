@@ -4,7 +4,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { financeService } from '../services/financeService';
-import { DollarSign, User, Calendar, CheckCircle, Wallet, History, X, Settings, Save, Percent, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { DollarSign, User, Calendar, CheckCircle, Wallet, History, X, Settings, Save, Percent, Plus, Trash2, ChevronDown, ChevronRight, LayoutList } from 'lucide-react';
 import { NewExpenseModal } from '../components/NewExpenseModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,13 +21,17 @@ export default function Pagos() {
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [selectedDoctorHistory, setSelectedDoctorHistory] = useState<any>(null);
 
+    // Production Detail Modal State
+    const [isProductionModalOpen, setIsProductionModalOpen] = useState(false);
+    const [selectedDoctorProduction, setSelectedDoctorProduction] = useState<any>(null);
+
     // Commission Config Modal State
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     // Structure: { doctorName: { _default: 33, Ortodoncia: 50, ... } }
     const [commissionRules, setCommissionRules] = useState<Record<string, Record<string, number>>>({});
     const [expandedDoctor, setExpandedDoctor] = useState<string | null>(null);
     const [newCategoryInputs, setNewCategoryInputs] = useState<Record<string, string>>({});
-    const [treatmentCategories, setTreatmentCategories] = useState<string[]>([]);
+    const [treatmentNames, setTreatmentNames] = useState<string[]>([]);
     const [savingConfig, setSavingConfig] = useState(false);
     const [editingField, setEditingField] = useState<{ doctor: string; cat: string; original: number } | null>(null);
     const [saveToast, setSaveToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -49,9 +53,9 @@ export default function Pagos() {
 
             setCategories(cats || []);
 
-            // Extract unique treatment categories for the dropdown
-            const uniqueCategories = [...new Set((aranceles || []).map((a: any) => a.category).filter(Boolean))];
-            setTreatmentCategories(uniqueCategories.sort());
+            // Extract unique treatment names for the dropdown
+            const uniqueTreatments = [...new Set((aranceles || []).map((a: any) => a.name).filter(Boolean))];
+            setTreatmentNames(uniqueTreatments.sort());
 
             // Build commission rules map from DB OR use override
             let rulesMap: Record<string, Record<string, number>> = overrideRules || {};
@@ -198,7 +202,7 @@ export default function Pagos() {
 
             <PageHeader
                 title="Gestión de Pagos y Nómina"
-                subtitle="Control de comisiones médicas y registro de honorarios."
+                subtitle="Control de aranceles médicos y registro de honorarios."
             />
 
             {/* Summary Cards */}
@@ -206,7 +210,7 @@ export default function Pagos() {
                 <div className="bg-slate-900 text-white rounded-xl shadow-sm overflow-hidden p-6">
                     <div className="flex items-center gap-3 mb-2 opacity-80">
                         <Wallet size={20} />
-                        <span className="text-sm font-medium">Comisiones Generadas</span>
+                        <span className="text-sm font-medium">Aranceles Generados</span>
                     </div>
                     <div className="text-3xl font-black">${summary.totalCommissions.toFixed(2)}</div>
                 </div>
@@ -241,7 +245,7 @@ export default function Pagos() {
                         className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-bold transition-colors"
                     >
                         <Settings size={16} />
-                        Configurar Comisiones
+                        Configurar Aranceles
                     </button>
                 </div>
                 <div className="overflow-x-auto">
@@ -251,7 +255,7 @@ export default function Pagos() {
                                 <th className="px-6 py-4 font-bold text-slate-500">Doctor</th>
                                 <th className="px-6 py-4 font-bold text-slate-500 text-center">Pacientes</th>
                                 <th className="px-6 py-4 font-bold text-slate-500 text-right">Facturación</th>
-                                <th className="px-6 py-4 font-bold text-slate-800 text-right bg-slate-100/50">Comisión</th>
+                                <th className="px-6 py-4 font-bold text-slate-800 text-right bg-slate-100/50">Arancel</th>
                                 <th className="px-6 py-4 font-bold text-emerald-600 text-right">Pagado</th>
                                 <th className="px-6 py-4 font-bold text-amber-600 text-right">Saldo</th>
                                 <th className="px-6 py-4 font-bold text-slate-500 text-center">Acción</th>
@@ -306,6 +310,17 @@ export default function Pagos() {
                                                     title="Ver Historial de Pagos"
                                                 >
                                                     <History size={18} />
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedDoctorProduction(doc);
+                                                        setIsProductionModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-colors"
+                                                    title="Ver Desglose de Producción"
+                                                >
+                                                    <LayoutList size={18} />
                                                 </button>
 
                                                 {doc.balance > 0.01 ? (
@@ -457,9 +472,9 @@ export default function Pagos() {
                             <div>
                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                     <Percent size={20} className="text-[#5dc0bb]" />
-                                    Configurar Comisiones
+                                    Configurar Aranceles
                                 </h3>
-                                <p className="text-sm text-slate-500 mt-1">Define el % base y reglas por especialidad para cada doctor.</p>
+                                <p className="text-sm text-slate-500 mt-1">Define el % base y reglas por tratamiento para cada doctor.</p>
                             </div>
                             <button
                                 onClick={() => { setIsConfigModalOpen(false); setExpandedDoctor(null); }}
@@ -550,7 +565,7 @@ export default function Pagos() {
                                                 {/* Expanded: Category Overrides */}
                                                 {isExpanded && (
                                                     <div className="border-t border-slate-100 bg-white p-4 space-y-2">
-                                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reglas por Especialidad</p>
+                                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reglas por Tratamiento</p>
 
                                                         {categoryOverrides.length === 0 && (
                                                             <p className="text-xs text-slate-400 italic py-2">Sin reglas específicas. Se usará {rules['_default'] || 33}% para todo.</p>
@@ -617,11 +632,11 @@ export default function Pagos() {
                                                                 onChange={(e) => setNewCategoryInputs(prev => ({ ...prev, [doctorName]: e.target.value }))}
                                                                 className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-[#5dc0bb] focus:border-transparent outline-none bg-white"
                                                             >
-                                                                <option value="">Seleccionar especialidad...</option>
-                                                                {treatmentCategories
-                                                                    .filter(c => !rules[c]) // Don't show already-added categories
-                                                                    .map(cat => (
-                                                                        <option key={cat} value={cat}>{cat}</option>
+                                                                <option value="">Seleccionar tratamiento...</option>
+                                                                {treatmentNames
+                                                                    .filter(c => !rules[c]) // Don't show already-added treatments
+                                                                    .map(tName => (
+                                                                        <option key={tName} value={tName}>{tName}</option>
                                                                     ))
                                                                 }
                                                             </select>
@@ -643,7 +658,7 @@ export default function Pagos() {
 
                         {/* Footer */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center gap-3">
-                            <p className="text-xs text-slate-400">Prioridad: Especialidad → Base → 33%</p>
+                            <p className="text-xs text-slate-400">Prioridad: Tratamiento → Especialidad → Base → 33%</p>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => { setIsConfigModalOpen(false); setExpandedDoctor(null); }}
@@ -660,6 +675,92 @@ export default function Pagos() {
                                     {savingConfig ? 'Guardando...' : 'Guardar'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Production Detail Modal */}
+            {isProductionModalOpen && selectedDoctorProduction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-teal-100 text-teal-600 rounded-xl">
+                                    <LayoutList size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800">Desglose de Producción</h3>
+                                    <p className="text-sm text-slate-500 font-medium">Doctor: <span className="text-slate-900">{selectedDoctorProduction.name}</span></p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsProductionModalOpen(false)}
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="overflow-y-auto p-6 bg-slate-50/30">
+                            {selectedDoctorProduction.ops && selectedDoctorProduction.ops.length > 0 ? (
+                                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                                    <table className="w-full text-left text-sm">
+                                        <thead>
+                                            <tr className="bg-slate-100/80 border-b border-slate-200">
+                                                <th className="px-5 py-4 font-bold text-slate-600">Fecha</th>
+                                                <th className="px-5 py-4 font-bold text-slate-600">Paciente</th>
+                                                <th className="px-4 py-4 font-bold text-slate-600">Tratamiento</th>
+                                                <th className="px-5 py-4 font-bold text-slate-600 text-right">Facturado</th>
+                                                <th className="px-5 py-4 font-bold text-slate-600 text-center">% Arancel</th>
+                                                <th className="px-5 py-4 font-bold text-teal-600 text-right bg-teal-50/30">Arancel</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {selectedDoctorProduction.ops.map((op: any, i: number) => (
+                                                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-5 py-3 text-slate-500">{format(new Date(op.date), 'dd MMM', { locale: es })}</td>
+                                                    <td className="px-5 py-3 font-semibold text-slate-700">{op.patient}</td>
+                                                    <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{op.treatment}</td>
+                                                    <td className="px-5 py-3 text-right text-slate-500 font-medium">${op.amount.toFixed(2)}</td>
+                                                    <td className="px-5 py-3 text-center">
+                                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${op.commissionRate === (selectedDoctorProduction.commissionRate / 100) ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-600 border border-amber-200'}`}>
+                                                            {(op.commissionRate * 100).toFixed(0)}%
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-3 text-right font-black text-teal-600 bg-teal-50/10">
+                                                        ${op.commissionAmount.toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="bg-slate-900 text-white">
+                                                <td colSpan={3} className="px-5 py-4 font-bold text-teal-400">TOTAL GENERADO</td>
+                                                <td className="px-5 py-4 text-right font-bold opacity-80">${selectedDoctorProduction.billing.toFixed(2)}</td>
+                                                <td className="px-5 py-4"></td>
+                                                <td className="px-5 py-4 text-right text-lg font-black">${selectedDoctorProduction.tariffs.toFixed(2)}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-slate-200">
+                                    <LayoutList size={48} className="mx-auto mb-4 opacity-10" />
+                                    <p className="text-slate-400 font-medium">No hay registros detallados para este periodo.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-slate-100 bg-white flex justify-end">
+                            <button
+                                onClick={() => setIsProductionModalOpen(false)}
+                                className="px-6 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                                Cerrar
+                            </button>
                         </div>
                     </div>
                 </div>

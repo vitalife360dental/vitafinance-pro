@@ -472,14 +472,23 @@ export const financeService = {
     // --- Production Analytics Engine 🏭 ---
     async getProductionAnalytics() {
         // 1. Fetch Base Data + Doctor Commission Rules
-        const [transactions, treatments, commissionRules] = await Promise.all([
+        const [transactions, treatments, commissionRules, treatmentCosts] = await Promise.all([
             this.getTransactions(),
             this.getAranceles(),
-            this.getDoctorCommissions()
+            this.getDoctorCommissions(),
+            supabase.from('vf_treatment_costs').select('*')
         ]);
 
         const normalize = (str: string) =>
             str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
+
+        // Build mapping for special treatment costs (Lab costs)
+        const costMap: Record<string, number> = {};
+        (treatmentCosts.data || []).forEach((c: any) => {
+            if (c.treatment_name) {
+                costMap[normalize(c.treatment_name)] = Number(c.supply_cost || 0);
+            }
+        });
 
         // Build cascading commission lookup: doctor+category > doctor+_default > 33%
         // Key format: "doctorname::category" or "doctorname::_default"
@@ -491,15 +500,24 @@ export const financeService = {
             commissionMap[key] = Number(rule.commission_rate) / 100;
         });
 
-        const getCommissionRate = (doctorName: string, treatmentCategory: string): number => {
+        const getCommissionRate = (doctorName: string, treatmentCategory: string, treatmentName: string): number => {
             const docKey = normalize(doctorName);
-            // 1. Try doctor + specific category
-            const specificKey = `${docKey}::${normalize(treatmentCategory)}`;
+            const treatKey = normalize(treatmentName);
+            const catKey = normalize(treatmentCategory);
+
+            // 1. Try doctor + specific treatment name
+            const treatmentSpecKey = `${docKey}::${treatKey}`;
+            if (commissionMap[treatmentSpecKey] !== undefined) return commissionMap[treatmentSpecKey];
+
+            // 2. Try doctor + specific category (legacy/fallback)
+            const specificKey = `${docKey}::${catKey}`;
             if (commissionMap[specificKey] !== undefined) return commissionMap[specificKey];
-            // 2. Try doctor + _default
+
+            // 3. Try doctor + _default
             const defaultKey = `${docKey}::_default`;
             if (commissionMap[defaultKey] !== undefined) return commissionMap[defaultKey];
-            // 3. Global fallback
+
+            // 4. Global fallback
             return 0.33;
         };
 
@@ -541,14 +559,22 @@ export const financeService = {
 
             // Get the treatment's category for commission resolution
             const treatmentCategory = relatedTreatment?.category || 'General';
-            const commissionRate = getCommissionRate(doctorName, treatmentCategory);
 
-            // Commission uses the resolved rate
-            const tariffCost = relatedTreatment
-                ? (Number(relatedTreatment.price) * commissionRate)
-                : (Number(tx.amount) * commissionRate);
+            // Use matched treatment name for more robust rule lookup
+            const lookupName = relatedTreatment?.name || tx.treatment_name || tx.description || 'Consulta';
+            const commissionRate = getCommissionRate(doctorName, treatmentCategory, lookupName);
 
-            // Estimated Supplies (Insumos) - Rule of thumb: 15%
+            // Special Costs Deduction (Lab costs) - Priority: Match by normalization
+            const labCost = costMap[normalize(lookupName)] || 0;
+
+            // Subtotal for commission: Subtract lab cost from billed amount
+            const subtotalForCommission = Math.max(0, Number(tx.amount) - labCost);
+
+            // Commission calculation: based on subtotal (billed amount minus lab)
+            const tariffCost = (subtotalForCommission * commissionRate);
+
+            // Estimated Supplies (Insumos) - Rule of thumb: 15% (on the full amount or subtotal?)
+            // Usually clinic supplies are separate from external lab costs.
             const suppliesCost = Number(tx.amount) * 0.15;
 
             const netUtility = Number(tx.amount) - tariffCost - suppliesCost;
@@ -590,7 +616,6 @@ export const financeService = {
             hourlyRate: c.hours > 0 ? (c.utility / c.hours) : 0
         }));
 
-        // C. By Doctor (now includes per-doctor commission rate)
         const doctorsDict: Record<string, any> = {};
         processedOps.forEach(op => {
             if (!doctorsDict[op.doctor]) {
@@ -600,13 +625,24 @@ export const financeService = {
                     billing: 0,
                     tariffs: 0,
                     netContribution: 0,
-                    commissionRate: op.commissionRate // Store the rate for display
+                    commissionRate: op.commissionRate, // Store the rate for display
+                    ops: [] // Store individual operations for breakdown
                 };
             }
             doctorsDict[op.doctor].attentions += 1;
             doctorsDict[op.doctor].billing += Number(op.amount);
             doctorsDict[op.doctor].tariffs += op.tariffCost;
             doctorsDict[op.doctor].netContribution += op.netUtility;
+            doctorsDict[op.doctor].ops.push({
+                id: op.id,
+                date: op.date,
+                patient: op.patient_name || 'Paciente General',
+                treatment: op.treatment_name || op.description,
+                category: op.treatmentCategory,
+                amount: Number(op.amount),
+                commissionRate: op.commissionRate,
+                commissionAmount: op.tariffCost
+            });
         });
         const doctorsList = Object.values(doctorsDict).sort((a, b) => b.netContribution - a.netContribution);
 
@@ -1216,7 +1252,8 @@ export const financeService = {
             taxAudit,
             supplyAnalysis,
             financialHistory,
-            clinicConfig
+            clinicConfig,
+            doctorCommissions
         ] = await Promise.all([
             this.getGoalsAnalytics(),
             this.getProductionAnalytics(),
@@ -1226,7 +1263,8 @@ export const financeService = {
             this.getTaxAuditorAnalytics(),
             this.getSupplyAnalysis(),
             this.getFinancialHistory(12),
-            this.getClinicConfig()
+            this.getClinicConfig(),
+            this.getDoctorCommissions()
         ]);
 
         return {
@@ -1238,7 +1276,8 @@ export const financeService = {
             taxAudit,
             supplyAnalysis,
             financialHistory,
-            clinicConfig
+            clinicConfig,
+            doctorCommissions
         };
     },
 

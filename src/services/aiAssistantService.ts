@@ -46,22 +46,25 @@ export const aiAssistantService = {
             📌 CONTEXTO DEL NEGOCIO
             ────────────────────────
             • Clínica odontológica
-            • Pago a doctores mediante **ARANCELES FIJOS**
+            • Pago a doctores mediante **ARANCELES DINÁMICOS** (Prioridad: Tratamiento > Especialidad > Base).
+            • Si un doctor tiene una regla específica por **Nombre de Tratamiento** (ej: "Corona Zirconia"), esa regla manda.
+            • Los aranceles se calculan sobre el **VALOR REAL COBRADO** al paciente en cada transacción.
             • Costos Fijos Mensuales: $${clinicConfig.FIXED_COSTS_MONTHLY}
             • Horas Operativas: ${clinicConfig.OPERATIONAL_HOURS_MONTHLY}h/mes
             • Costo Operativo por Minuto: $${(supplyAnalysis.config?.costPerMinute || 0).toFixed(2)}
 
             ────────────────────────
-            📊 MÓDULOS ACTIVOS
+            📈 REGLAS DE ARANCEL (SISTEMA DE PAGOS)
             ────────────────────────
-            1. Finanzas, Producción, Insumos, Metas, Pacientes, Aranceles.
-            2. **NUEVO**: Auditoría SRI (Impuestos) y Análisis de Rentabilidad Real (Insumos).
+            Las reglas actuales configuradas son:
+            ${context.doctorCommissions.map((r: any) => `- ${r.name || r.doctor_name}: ${r.category === '_default' ? 'BASE' : r.category} -> ${r.commission_rate}%`).join('\n            ')}
 
             ────────────────────────
-            🚨 ALERTAS CRÍTICAS ACTUALES
+            📊 MÓDULOS ACTIVOS
             ────────────────────────
-            ${taxAudit.alerts.map((a: any) => `• [${a.level.toUpperCase()}] ${a.title}: ${a.message}`).join('\n            ')}
-            ${goalsData.alerts.map((a: any) => `• [META] ${a.title}: ${a.message}`).join('\n            ')}
+            1. Finanzas, Producción, Laboratorio, Metas, Pacientes, Aranceles.
+            2. **PAGOS**: Permite ver un **Desglose de Producción** (lista de tratamientos con su % y arancel final).
+            3. **NUEVO**: Auditoría SRI (Impuestos) y Análisis de Rentabilidad Real (Laboratorio).
 
             ────────────────────────
             🏭 PRODUCCIÓN Y RENTABILIDAD
@@ -89,7 +92,7 @@ export const aiAssistantService = {
             📊 **HISTORIAL FINANCIERO (Últimos Meses)**:
             ${financialHistory.map((h: any) => `- ${h.month}: Ingresos $${h.income} | Gastos $${h.expenses}`).join('\n            ')}
 
-            📝 **ÚLTIMOS MOVIMIENTOS**:
+            📝 **ÚLTIMOS MOVIMIENTOS (TRANSACCIONES)**:
             ${transactionsList}
 
             👥 **PACIENTES RECIENTES / ACTIVOS**:
@@ -101,10 +104,12 @@ export const aiAssistantService = {
             ────────────────────────
             🎯 TUS OBJETIVOS
             ────────────────────────
-            1. Responder con autoridad gerencial.
-            2. Si preguntan por impuestos, usa la sección ESTADO FISCAL.
-            3. Si preguntan por precios, usa la lista con MÁRGENES reales.
-            4. Detectar alertas y proponer soluciones.
+            1. Responder con autoridad gerencial y financiera.
+            2. Si preguntan "¿Cuánto se le debe pagar al Dr. X?", revisa sus **REGLAS DE ARANCEL**.
+            3. Recuerda que la prioridad es: Tratamiento específico > Especialidad > Tasa Base.
+            4. Si preguntan por impuestos, usa la sección ESTADO FISCAL.
+            5. Si preguntan por precios, usa la lista con MÁRGENES reales.
+            6. Detectar alertas y proponer soluciones basadas en datos reales.
             
             NO inventes datos. Si falta info, pídelo.
         `;

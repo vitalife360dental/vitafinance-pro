@@ -116,7 +116,7 @@ export default function Insumos() {
                             className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
                         >
                             <Sliders size={18} />
-                            <span className="text-sm font-bold">Configurar Gastos</span>
+                            <span className="text-sm font-bold">Configurar Laboratorio</span>
                         </button>
                     )}
 
@@ -184,7 +184,7 @@ export default function Insumos() {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Duración</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Precio</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-red-400 uppercase tracking-wider text-right bg-red-50/10">(-) Coms (33%)</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-amber-500 uppercase tracking-wider text-right bg-amber-50/30">(-) Insumos</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-amber-500 uppercase tracking-wider text-right bg-amber-50/30">(-) Laboratorio</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right bg-slate-100/50">(-) Op. Sillón</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-emerald-600 uppercase tracking-wider text-right bg-emerald-50/30 border-l border-emerald-100">(=) Utilidad Real</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Margen</th>

@@ -1,73 +1,37 @@
-# React + TypeScript + Vite
+# VitaFINANCE Pro 🦷
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema integral de gestión financiera para clínicas odontológicas, diseñado para maximizar la rentabilidad y automatizar la transparencia de pagos.
 
-Currently, two official plugins are available:
+## 🚀 Características Principales
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Dashboard Real-Time**: Visualización de ingresos, egresos y utilidad neta.
+- **Aranceles Dinámicos**: Configuración de reglas de pago por doctor, especialidad o tratamiento específico.
+- **Deducción de Laboratorio**: Despacho automático de costos de laboratorio antes de calcular aranceles médicos.
+- **Auditoría SRI**: Seguimiento de la brecha fiscal y cumplimiento de facturación.
+- **Análisis de Rentabilidad**: Desglose por silla odontológica y tiempo operativo.
 
-## React Compiler
+## 🛠 Tecnologías
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Fronend**: React + TypeScript + Vite
+- **Estilos**: Tailwind CSS (Rich Aesthetics)
+- **Backend**: Supabase (PostgreSQL + RLS)
+- **Despliegue**: Cloudflare Pages
 
-## Expanding the ESLint configuration
+## 📦 Despliegue en Cloudflare Pages
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Este proyecto está optimizado para **Cloudflare Pages**. Sigue estos pasos:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. **Conecta GitHub**: Ve a tu panel de Cloudflare -> Workers & Pages -> Create Application -> Pages -> Connect to Git.
+2. **Selecciona Repositorio**: Elige el repositorio `vitafinance-pro`.
+3. **Configuración de Build**:
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Build Output Directory**: `dist`
+4. **Variables de Entorno**: Agrega tus variables de Supabase:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+5. **Listo**: Cloudflare detectará automáticamente el archivo `public/_redirects` para manejar las rutas del sistema (SPA).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 📄 Licencia
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Privado - Uso exclusivo para VitaLife 360 Dental.
