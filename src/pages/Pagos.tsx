@@ -4,7 +4,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { financeService } from '../services/financeService';
-import { DollarSign, User, Calendar, CheckCircle, Wallet, History, X, Settings, Save, Percent, Plus, Trash2, ChevronDown, ChevronRight, LayoutList } from 'lucide-react';
+import { DollarSign, User, Calendar, CheckCircle, Wallet, History, X, Settings, Save, Percent, Plus, Trash2, ChevronDown, ChevronRight, LayoutList, Search } from 'lucide-react';
 import { NewExpenseModal } from '../components/NewExpenseModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -35,6 +35,7 @@ export default function Pagos() {
     const [savingConfig, setSavingConfig] = useState(false);
     const [editingField, setEditingField] = useState<{ doctor: string; cat: string; original: number } | null>(null);
     const [saveToast, setSaveToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         loadData();
@@ -182,6 +183,10 @@ export default function Pagos() {
         loadData();
     };
 
+    const filteredDoctors = doctors.filter(doc =>
+        doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <PageContainer>
             {/* Toast Notification */}
@@ -235,11 +240,23 @@ export default function Pagos() {
 
             {/* Doctors Table */}
             <Card className="overflow-hidden shadow-sm border border-slate-200" noPadding>
-                <div className="p-6 border-b border-slate-100 bg-white flex items-center justify-between">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        <User size={20} className="text-slate-400" />
-                        Estado de Cuenta por Doctor
-                    </h3>
+                <div className="p-6 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 flex-1">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2 shrink-0">
+                            <User size={20} className="text-slate-400" />
+                            Estado de Cuenta
+                        </h3>
+                        <div className="relative max-w-xs w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Buscar doctor..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5dc0bb]/20 focus:border-[#5dc0bb] outline-none transition-all"
+                            />
+                        </div>
+                    </div>
                     <button
                         onClick={() => setIsConfigModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-bold transition-colors"
@@ -262,82 +279,90 @@ export default function Pagos() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {doctors.map((doc) => {
-                                const docRules = commissionRules[doc.name] || {};
-                                const categoryOverrides = Object.entries(docRules).filter(([k]) => k !== '_default');
+                            {filteredDoctors.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                                        No se encontraron doctores con ese nombre.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredDoctors.map((doc) => {
+                                    const docRules = commissionRules[doc.name] || {};
+                                    const categoryOverrides = Object.entries(docRules).filter(([k]) => k !== '_default');
 
-                                return (
-                                    <tr key={doc.name} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="font-bold text-slate-800">{doc.name}</span>
-                                                <div className="flex flex-wrap gap-1">
-                                                    <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-medium">
-                                                        Base: {docRules['_default'] || 33}%
-                                                    </span>
-                                                    {categoryOverrides.map(([cat, rate]) => (
-                                                        <span key={cat} className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded font-medium border border-amber-100">
-                                                            {cat}: {rate}%
+                                    return (
+                                        <tr key={doc.name} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="font-bold text-slate-800">{doc.name}</span>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-medium">
+                                                            Base: {docRules['_default'] || 33}%
                                                         </span>
-                                                    ))}
+                                                        {categoryOverrides.map(([cat, rate]) => (
+                                                            <span key={cat} className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded font-medium border border-amber-100">
+                                                                {cat}: {rate}%
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <Badge variant="neutral">{doc.attentions}</Badge>
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-slate-600">${doc.billing.toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-right font-bold text-slate-900 bg-slate-50/50">
-                                            <div className="flex flex-col items-end">
-                                                <span>${doc.tariffs.toFixed(2)}</span>
-                                                <span className="text-[10px] font-medium text-slate-400">{doc.commissionPercent || 33}% prom.</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-medium text-emerald-600">
-                                            ${doc.docPayments.toFixed(2)}
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-black text-amber-600">
-                                            ${doc.balance.toFixed(2)}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedDoctorHistory(doc);
-                                                        setIsHistoryModalOpen(true);
-                                                    }}
-                                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-                                                    title="Ver Historial de Pagos"
-                                                >
-                                                    <History size={18} />
-                                                </button>
-
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedDoctorProduction(doc);
-                                                        setIsProductionModalOpen(true);
-                                                    }}
-                                                    className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-colors"
-                                                    title="Ver Desglose de Producción"
-                                                >
-                                                    <LayoutList size={18} />
-                                                </button>
-
-                                                {doc.balance > 0.01 ? (
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <Badge variant="neutral">{doc.attentions}</Badge>
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-600">${doc.billing.toFixed(2)}</td>
+                                            <td className="px-6 py-4 text-right font-bold text-slate-900 bg-slate-50/50">
+                                                <div className="flex flex-col items-end">
+                                                    <span>${doc.tariffs.toFixed(2)}</span>
+                                                    <span className="text-[10px] font-medium text-slate-400">{doc.commissionPercent || 33}% prom.</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-medium text-emerald-600">
+                                                ${doc.docPayments.toFixed(2)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-black text-amber-600">
+                                                ${doc.balance.toFixed(2)}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-2">
                                                     <button
-                                                        onClick={() => handleOpenPayment(doc)}
-                                                        className="bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors flex items-center gap-1"
+                                                        onClick={() => {
+                                                            setSelectedDoctorHistory(doc);
+                                                            setIsHistoryModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                                                        title="Ver Historial de Pagos"
                                                     >
-                                                        <DollarSign size={14} /> Pagar
+                                                        <History size={18} />
                                                     </button>
-                                                ) : (
-                                                    <Badge variant="success">Al día</Badge>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedDoctorProduction(doc);
+                                                            setIsProductionModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-colors"
+                                                        title="Ver Desglose de Producción"
+                                                    >
+                                                        <LayoutList size={18} />
+                                                    </button>
+
+                                                    {doc.balance > 0.01 ? (
+                                                        <button
+                                                            onClick={() => handleOpenPayment(doc)}
+                                                            className="bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors flex items-center gap-1"
+                                                        >
+                                                            <DollarSign size={14} /> Pagar
+                                                        </button>
+                                                    ) : (
+                                                        <Badge variant="success">Al día</Badge>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
                         </tbody>
                     </table>
                 </div>

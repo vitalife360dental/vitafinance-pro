@@ -1,19 +1,36 @@
+import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity } from 'lucide-react';
+import { Activity, Search } from 'lucide-react';
 
 export default function ProductionTreatments({ data }: { data: any }) {
+    const [searchTerm, setSearchTerm] = useState('');
+
     if (!data) return null;
     const { treatments } = data;
     const topTreatments = treatments.slice(0, 10);
 
+    const filteredTreatments = treatments.filter((t: any) =>
+        t.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="space-y-6 p-6">
-            {/* Chart */}
+            {/* Chart Section Header with Search */}
             <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
                     <div>
                         <h3 className="font-bold text-slate-700">Top 10 Tratamientos Más Rentables</h3>
                         <p className="text-xs text-slate-400">Ordenados por utilidad neta generada</p>
+                    </div>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                            type="text"
+                            placeholder="Buscar en tabla..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5dc0bb]/20 focus:border-[#5dc0bb] outline-none transition-all w-64"
+                        />
                     </div>
                 </div>
                 <div className="h-[300px] w-full">
@@ -59,30 +76,38 @@ export default function ProductionTreatments({ data }: { data: any }) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                        {treatments.map((t: any, i: number) => (
-                            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
-                                    <div className="p-1.5 bg-blue-50 text-blue-500 rounded-lg">
-                                        <Activity size={14} />
-                                    </div>
-                                    {t.name}
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-xs font-bold">
-                                        {t.count}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right text-slate-500">
-                                    ${(t.price / t.count).toFixed(2)}
-                                </td>
-                                <td className="px-6 py-4 text-right font-bold text-emerald-500">
-                                    {t.marginPercent.toFixed(1)}%
-                                </td>
-                                <td className="px-6 py-4 text-right font-bold text-slate-700">
-                                    ${t.utility.toFixed(2)}
+                        {filteredTreatments.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                                    No se encontraron tratamientos.
                                 </td>
                             </tr>
-                        ))}
+                        ) : (
+                            filteredTreatments.map((t: any, i: number) => (
+                                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
+                                        <div className="p-1.5 bg-blue-50 text-blue-500 rounded-lg">
+                                            <Activity size={14} />
+                                        </div>
+                                        {t.name}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-xs font-bold">
+                                            {t.count}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-slate-500">
+                                        ${(t.price / t.count).toFixed(2)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right font-bold text-emerald-500">
+                                        {t.marginPercent.toFixed(1)}%
+                                    </td>
+                                    <td className="px-6 py-4 text-right font-bold text-slate-700">
+                                        ${t.utility.toFixed(2)}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
