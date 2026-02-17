@@ -18,3 +18,8 @@ SET lab_cost = supply_cost,
     supply_cost = 2.00 -- Keep a small estimate for clinic materials
 WHERE category_group IN ('🟠 PRÓTESIS FIJA', '🟠 PRÓTESIS REMOVIBLE')
     AND supply_cost > 20;
+-- Fix RLS for vf_clinic_config to allow saving settings
+ALTER TABLE vf_clinic_config ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON vf_clinic_config;
+CREATE POLICY "Enable all access for authenticated users" ON vf_clinic_config FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT ALL ON vf_clinic_config TO authenticated;

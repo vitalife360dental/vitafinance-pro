@@ -5,7 +5,7 @@ interface OperationalConfigModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentConfig: any;
-    onSave: (config: any) => Promise<void>;
+    onSave: (config: any, syncToExpenses: boolean) => Promise<void>;
 }
 
 export const OperationalConfigModal: React.FC<OperationalConfigModalProps> = ({ isOpen, onClose, currentConfig, onSave }) => {
@@ -19,6 +19,7 @@ export const OperationalConfigModal: React.FC<OperationalConfigModalProps> = ({ 
         COST_OTHER: 0
     });
     const [loading, setLoading] = useState(false);
+    const [syncToExpenses, setSyncToExpenses] = useState(false);
 
     useEffect(() => {
         if (isOpen && currentConfig) {
@@ -57,7 +58,7 @@ export const OperationalConfigModal: React.FC<OperationalConfigModalProps> = ({ 
         await onSave({
             ...formData,
             FIXED_COSTS_MONTHLY: totalFixed
-        });
+        }, syncToExpenses);
         setLoading(false);
         onClose();
     };
@@ -69,8 +70,8 @@ export const OperationalConfigModal: React.FC<OperationalConfigModalProps> = ({ 
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800">Costo Operativo del Consultorio</h3>
-                        <p className="text-xs text-slate-500">Define tus gastos fijos mensuales para calcular el "Costo Sillón"</p>
+                        <h3 className="text-lg font-semibold text-gray-900">Configuración de Consumos Básicos Vitalife</h3>
+                        <p className="text-sm text-gray-500">Define tus gastos fijos mensuales para calcular el "Costo Sillón"</p>
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
                         <X size={20} />
@@ -142,6 +143,22 @@ export const OperationalConfigModal: React.FC<OperationalConfigModalProps> = ({ 
                             <span className="text-sm font-bold text-emerald-600">Costo por Minuto:</span>
                             <span className="text-xl font-black text-emerald-600">${costPerMinute.toFixed(2)}</span>
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                        <input
+                            type="checkbox"
+                            id="syncExpenses"
+                            checked={syncToExpenses}
+                            onChange={(e) => setSyncToExpenses(e.target.checked)}
+                            className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="syncExpenses" className="text-xs font-semibold text-indigo-900 cursor-pointer select-none">
+                            Registrar estos valores en Egresos del Mes
+                            <span className="block text-[10px] text-indigo-500 font-normal">
+                                Se crearán gastos automáticos con fecha de hoy (sin PDF).
+                            </span>
+                        </label>
                     </div>
 
                     <button

@@ -870,6 +870,62 @@ export const financeService = {
         }
     },
 
+    async generateOperationalExpenses(config: any) {
+        console.log('Generating Egresos from Operational Config...');
+        const today = new Date().toISOString().split('T')[0];
+
+        // Map config keys to readable descriptions and potential categories
+        const COST_MAPPING: Record<string, string> = {
+            'COST_RENT': 'Alquiler Consultorio',
+            'COST_SALARIES': 'Sueldos Fijos / Nómina',
+            'COST_ELECTRICITY': 'Servicio Básico: Electricidad',
+            'COST_WATER': 'Servicio Básico: Agua',
+            'COST_INTERNET': 'Servicio: Internet/Teléfono',
+            'COST_OTHER': 'Otros Gastos Operativos'
+        };
+
+        const expensesToCreate = [];
+
+        for (const [key, value] of Object.entries(config)) {
+            // Only process known cost keys with value > 0
+            if (COST_MAPPING[key] && Number(value) > 0) {
+                expensesToCreate.push({
+                    amount: Number(value),
+                    description: `Costo Operativo: ${COST_MAPPING[key]}`,
+                    date: today,
+                    type: 'expense' as const,
+                    category_id: undefined, // Will default to General or we could fetch 'Costos Operativos' category,
+                    payment_code: '-',
+                    method: 'Transferencia', // Default assumption for fixed costs
+                    status: 'PAGADO'
+                });
+            }
+        }
+
+        if (expensesToCreate.length === 0) return 0;
+
+        // Execute creations cleanly
+        let createdCount = 0;
+        for (const expense of expensesToCreate) {
+            try {
+                // Use existing createTransaction to handle all DB defaults
+                await this.createTransaction({
+                    ...expense,
+                    // Fill required missing fields
+                    patient_name: '-',
+                    doctor_name: '-',
+                    treatment_name: expense.description, // Use description as 'treatment' for visibility in some views
+                    transaction_time: new Date().toTimeString().slice(0, 5)
+                });
+                createdCount++;
+            } catch (e) {
+                console.error(`Failed to create expense for ${expense.description}`, e);
+            }
+        }
+
+        return createdCount;
+    },
+
     async getSupplyAnalysis() {
         console.log('Calculating True Profitability...');
 

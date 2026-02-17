@@ -270,8 +270,28 @@ export default function Insumos() {
                 isOpen={isConfigOpen}
                 onClose={() => setIsConfigOpen(false)}
                 currentConfig={config}
-                onSave={async (newConfig) => {
-                    await financeService.saveClinicConfig(newConfig);
+                onSave={async (newConfig, syncToExpenses) => {
+                    try {
+                        await financeService.saveClinicConfig(newConfig);
+
+                        if (syncToExpenses) {
+                            const count = await financeService.generateOperationalExpenses(newConfig);
+                            if (count > 0) {
+                                alert(`✅ Configuración guardada y ${count} egresos generados con fecha de hoy.`);
+                            } else {
+                                alert('✅ Configuración guardada (no se generaron egresos por tener valores en 0).');
+                            }
+                        } else {
+                            // Silent success or maybe a small toast if we had one, but keeping it simple
+                        }
+                    } catch (error: any) {
+                        console.error('Save error:', error);
+                        if (error.code === '42501') {
+                            alert('⚠️ Error de Permisos (RLS): Necesitas ejecutar el script "migration_add_lab_cost.sql" en Supabase para habilitar el guardado.');
+                        } else {
+                            alert('Error al guardar la configuración: ' + (error.message || 'Error desconocido'));
+                        }
+                    }
                     await loadData();
                 }}
             />
