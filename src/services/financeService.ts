@@ -568,17 +568,14 @@ export const financeService = {
             const treatmentCostData = costMap[normalize(lookupName)] || {};
             const labCost = Number(treatmentCostData.lab_cost || 0);
 
-            // Subtotal for arancel: Subtract lab cost from billed amount
-            const subtotalForArancel = Math.max(0, Number(tx.amount) - labCost);
-
-            // Arancel calculation: based on subtotal (billed amount minus lab)
-            const tariffCost = (subtotalForArancel * commissionRate);
+            // Arancel: commission on FULL billed amount (lab cost only affects net utility)
+            const tariffCost = Number(tx.amount) * commissionRate;
 
             // Estimated Supplies (Materiales) - Rule of thumb: 15% 
             // Usually clinic supplies are separate from external lab costs.
             const suppliesCost = Number(tx.amount) * 0.15;
 
-            const netUtility = Number(tx.amount) - tariffCost - suppliesCost;
+            const netUtility = Math.max(0, Number(tx.amount) - tariffCost - suppliesCost - labCost);
 
             return {
                 ...tx,
@@ -898,34 +895,84 @@ export const financeService = {
             'plano relajacion': 'plano de relajacion'
         };
 
-        // 1. Fetch External Treatments (Source of Truth for Price/Duration)
-        // We reuse getAranceles() which fetches from 'treatments' table
-        const treatments = await this.getAranceles();
+        // 1. Fetch External Treatments, Costs, Commission Rules, AND real Transactions
+        const [treatments, costsResult, commissionRules, transactions] = await Promise.all([
+            this.getAranceles(),
+            supabase.from('vf_treatment_costs').select('*'),
+            this.getDoctorCommissions(),
+            this.getTransactions()
+        ]);
 
-        // 2. Fetch Local Standard Costs (Supplies)
-        const { data: costs } = await supabase.from('vf_treatment_costs').select('*');
+        // 2. Build cost map
         const costMap = new Map();
-
-        costs?.forEach((c: any) => {
+        costsResult.data?.forEach((c: any) => {
             if (c.treatment_name) {
-                // Map the normalized name to the cost object
-                // We map keys by their normalized standard name
                 const key = normalize(c.treatment_name);
-                const existing = costMap.get(key);
-                // Prefer costs > 0
-                if (!existing || (existing.supply_cost === 0 && c.supply_cost > 0)) {
-                    costMap.set(key, c);
-                }
+                costMap.set(key, c);
             }
         });
 
-        // 3. Fetch Clinic Config
+        // 3. Build commission lookup (same logic as getProductionAnalytics)
+        const commissionMap: Record<string, number> = {};
+        commissionRules.forEach((rule: any) => {
+            const doctorName = rule.name || rule.doctor_name || '';
+            const category = rule.category || '_default';
+            const key = `${normalize(doctorName)}::${normalize(category)}`;
+            commissionMap[key] = Number(rule.commission_rate) / 100;
+        });
+
+        const getCommissionRate = (doctorName: string, treatmentCategory: string, treatmentName: string): number => {
+            const docKey = normalize(doctorName);
+            const treatKey = normalize(treatmentName);
+            const catKey = normalize(treatmentCategory);
+            const treatmentSpecKey = `${docKey}::${treatKey}`;
+            if (commissionMap[treatmentSpecKey] !== undefined) return commissionMap[treatmentSpecKey];
+            const specificKey = `${docKey}::${catKey}`;
+            if (commissionMap[specificKey] !== undefined) return commissionMap[specificKey];
+            const defaultKey = `${docKey}::_default`;
+            if (commissionMap[defaultKey] !== undefined) return commissionMap[defaultKey];
+            return 0.33;
+        };
+
+        // 4. Calculate weighted average commission rate per treatment from real transactions
+        const incomeTx = transactions.filter((t: any) => t.type === 'income');
+        const treatmentRateAgg: Record<string, { totalAmount: number; weightedRateSum: number }> = {};
+
+        incomeTx.forEach((tx: any) => {
+            const doctorName = tx.doctor_name || 'Dr. General';
+            let txTreatName = normalize(tx.treatment_name || tx.description || '');
+            if (NAME_MAPPING[txTreatName]) txTreatName = normalize(NAME_MAPPING[txTreatName]);
+
+            // Find the matching treatment to get category
+            const relatedTreatment = treatments.find((t: any) => {
+                const tName = normalize(t.name);
+                return tName === txTreatName || txTreatName.includes(tName);
+            });
+            const treatmentCategory = relatedTreatment?.category || 'General';
+            const lookupName = relatedTreatment?.name || tx.treatment_name || tx.description || 'Consulta';
+
+            const rate = getCommissionRate(doctorName, treatmentCategory, lookupName);
+            const amount = Number(tx.amount);
+            const key = normalize(lookupName);
+
+            if (!treatmentRateAgg[key]) treatmentRateAgg[key] = { totalAmount: 0, weightedRateSum: 0 };
+            treatmentRateAgg[key].totalAmount += amount;
+            treatmentRateAgg[key].weightedRateSum += amount * rate;
+        });
+
+        // Build final map: treatment name -> weighted average rate
+        const treatmentAvgRates: Record<string, number> = {};
+        for (const [key, agg] of Object.entries(treatmentRateAgg)) {
+            treatmentAvgRates[key] = agg.totalAmount > 0 ? (agg.weightedRateSum / agg.totalAmount) : 0.33;
+        }
+
+        // 5. Fetch Clinic Config
         const config = await this.getClinicConfig();
         const fixedCosts = config.FIXED_COSTS_MONTHLY || 1500;
         const opHours = config.OPERATIONAL_HOURS_MONTHLY || 160;
         const costPerMinute = fixedCosts / (opHours * 60);
 
-        // 4. Merge & Calculate
+        // 6. Merge & Calculate
         const analysis = treatments.map(t => {
             // Normalize external name 
             let searchName = normalize(t.name);
@@ -940,11 +987,7 @@ export const financeService = {
 
             // Level 3: Partial Match Smart Logic (if no direct match)
             if (!localCost) {
-                // Example: "Biostimulador (Radiex)" contains "Biostimulador"
-                // We iterate our known DB keys to see if one is a substring of the external name
                 for (const dbKey of costMap.keys()) {
-                    // If external name (e.g. "bioestimulador radiex") includes the db key (e.g. "bioestimulador")
-                    // AND the db key is significant length (> 4 chars) to avoid false positives like "de" or "a"
                     if (dbKey.length > 4 && searchName.includes(dbKey)) {
                         localCost = costMap.get(dbKey);
                         break;
@@ -958,27 +1001,40 @@ export const financeService = {
             const finalDuration = t.duration ? parseInt(t.duration) : (localCost.duration_override || 30);
 
             // Costs
-            const commission = t.doctor_commission; // Already calculated as 33% in getAranceles
-            const supplyCost = Number(localCost.supply_cost || 0);
             const labCost = Number(localCost.lab_cost || 0);
+            const supplyCost = Number(localCost.supply_cost || 0);
             const overheadCost = finalDuration * costPerMinute;
 
-            // Profit
+            // Commission: on FULL price, using weighted avg rate from real transactions (fallback 33%)
+            const avgRate = treatmentAvgRates[searchName] ?? 0.33;
+            const commission = t.price * avgRate;
+
+            // Gross Margin: Precio - Materiales - Lab (NO arancel, NO overhead)
+            const directCosts = supplyCost + labCost;
+            const grossMargin = t.price - directCosts;
+            const grossMarginPct = t.price > 0 ? (grossMargin / t.price) * 100 : 0;
+
+            // Full Profit (for Pagos/Producción views)
             const totalCost = commission + supplyCost + labCost + overheadCost;
             const netProfit = t.price - totalCost;
             const margin = t.price > 0 ? (netProfit / t.price) * 100 : 0;
 
-            // Status Color
+            // Status Color (based on gross margin now)
             let profitabilityStatus = 'good'; // Green
-            if (margin < 15) profitabilityStatus = 'critical'; // Red
-            else if (margin < 40) profitabilityStatus = 'warning'; // Yellow
+            if (grossMarginPct < 30) profitabilityStatus = 'critical'; // Red
+            else if (grossMarginPct < 60) profitabilityStatus = 'warning'; // Yellow
 
             return {
                 ...t,
+                doctor_commission: commission,
+                avgCommissionRate: avgRate,
                 finalDuration,
                 supplyCost,
                 labCost,
                 overheadCost,
+                directCosts,
+                grossMargin,
+                grossMarginPct,
                 totalCost,
                 netProfit,
                 margin,
@@ -997,11 +1053,22 @@ export const financeService = {
     },
 
     async updateTreatmentCost(treatmentName: string, newValue: number, type: 'supply' | 'lab' = 'supply') {
+        // 1. Check if a row already exists (to preserve its category_group)
+        const { data: existing } = await supabase
+            .from('vf_treatment_costs')
+            .select('category_group, supply_cost, lab_cost')
+            .eq('treatment_name', treatmentName)
+            .maybeSingle();
+
         const updateData: any = {
             treatment_name: treatmentName,
+            category_group: existing?.category_group || 'General',
+            supply_cost: existing?.supply_cost ?? 0,
+            lab_cost: existing?.lab_cost ?? 0,
             updated_at: new Date().toISOString()
         };
 
+        // Override the specific field being edited
         if (type === 'lab') {
             updateData.lab_cost = newValue;
         } else {

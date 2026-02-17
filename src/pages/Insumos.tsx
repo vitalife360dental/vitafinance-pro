@@ -90,7 +90,7 @@ export default function Insumos() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <PageHeader
                     title="Análisis de Rentabilidad Real"
-                    subtitle="Control de costos de materiales clínicos, piezas de laboratorio y gastos operativos."
+                    subtitle="Control de costos de materiales clínicos y piezas de laboratorio por tratamiento."
                 />
                 <div className="flex items-center gap-3">
                     {/* Only Admin can sync defaults */}
@@ -120,13 +120,7 @@ export default function Insumos() {
                         </button>
                     )}
 
-                    <div className="flex flex-col items-end mr-4">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">Costo Operativo (Sillón)</span>
-                        <span className="text-lg font-bold text-slate-700">
-                            <span>${config.costPerMinute?.toFixed(2)}</span>
-                            <span className="text-xs text-slate-400"> / min</span>
-                        </span>
-                    </div>
+
                 </div>
             </div>
 
@@ -185,11 +179,9 @@ export default function Insumos() {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tratamiento</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Duración</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Precio</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-red-400 uppercase tracking-wider text-right bg-red-50/10">(-) Arancel</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-orange-500 uppercase tracking-wider text-right bg-orange-50/30">(-) Materiales</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-indigo-500 uppercase tracking-wider text-right bg-indigo-50/30">(-) Laboratorio</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right bg-slate-100/50">(-) Op. Sillón</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-emerald-600 uppercase tracking-wider text-right bg-emerald-50/30 border-l border-emerald-100">(=) Utilidad Real</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-emerald-600 uppercase tracking-wider text-right bg-emerald-50/30 border-l border-emerald-100">(=) Margen Bruto</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Margen</th>
                             </tr>
                         </thead>
@@ -197,7 +189,7 @@ export default function Insumos() {
                             {Object.entries(groupedItems).map(([category, items]: [string, any], idx) => (
                                 <Fragment key={`cat-${category}-${idx}`}>
                                     <tr className="bg-white/50 border-b border-slate-100">
-                                        <td colSpan={9} className="px-6 py-3 bg-slate-50/50">
+                                        <td colSpan={7} className="px-6 py-3 bg-slate-50/50">
                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]"><span>{category || 'General'}</span></span>
                                         </td>
                                     </tr>
@@ -212,9 +204,6 @@ export default function Insumos() {
                                             </td>
                                             <td className="px-6 py-4 text-right font-medium text-slate-800 bg-white">
                                                 <span>${item.price.toFixed(2)}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-red-500 text-xs bg-red-50/10">
-                                                <span>-${item.doctor_commission.toFixed(2)}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right font-medium bg-orange-50/30 p-0 relative group-hover:bg-orange-100/30 transition-colors">
                                                 <div className="flex items-center justify-end px-6 py-4">
@@ -258,17 +247,14 @@ export default function Insumos() {
                                                     />
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right text-slate-500 text-xs bg-slate-100/50">
-                                                <span>-${item.overheadCost.toFixed(2)}</span>
-                                            </td>
-                                            <td className={`px-6 py-4 text-right font-bold text-sm bg-emerald-50/30 border-l border-emerald-100 ${item.netProfit < 0 ? 'text-red-500' : 'text-emerald-700'}`}>
-                                                <span>${item.netProfit.toFixed(2)}</span>
+                                            <td className={`px-6 py-4 text-right font-bold text-sm bg-emerald-50/30 border-l border-emerald-100 ${item.grossMargin < 0 ? 'text-red-500' : 'text-emerald-700'}`}>
+                                                <span>${item.grossMargin.toFixed(2)}</span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <Badge
                                                     variant={item.profitabilityStatus === 'critical' ? 'error' : item.profitabilityStatus === 'warning' ? 'warning' : 'success'}
                                                 >
-                                                    <span>{item.margin.toFixed(0)}%</span>
+                                                    <span>{item.grossMarginPct.toFixed(0)}%</span>
                                                 </Badge>
                                             </td>
                                         </tr>
