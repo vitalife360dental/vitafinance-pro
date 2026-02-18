@@ -116,7 +116,7 @@ export default function Insumos() {
                             className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
                         >
                             <Sliders size={18} />
-                            <span className="text-sm font-bold">Configurar Laboratorio</span>
+                            <span className="text-sm font-bold">Configuración de Laboratorio</span>
                         </button>
                     )}
 
