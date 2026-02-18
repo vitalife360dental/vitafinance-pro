@@ -70,7 +70,7 @@ export const OperationalConfigModal: React.FC<OperationalConfigModalProps> = ({ 
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Configuración de Laboratorio</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">Configuración de Consumos Básicos Vitalife</h3>
                         <p className="text-sm text-gray-500">Define tus gastos fijos mensuales para calcular el "Costo Sillón"</p>
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
