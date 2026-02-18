@@ -37,7 +37,7 @@ export function Sidebar() {
         <NavItem to="/ingresos" icon={TrendingUp} label="Ingresos" />
         <NavItem to="/egresos" icon={TrendingDown} label="Egresos" />
         <NavItem to="/produccion" icon={FileText} label="Producción" />
-        <NavItem to="/insumos" icon={Package} label="Laboratorio" />
+        <NavItem to="/insumos" icon={Package} label="Rentabilidad" />
         <NavItem to="/metas" icon={Target} label="Metas" />
         <NavItem to="/pagos" icon={Wallet} label="Pagos" />
         <NavItem to="/aranceles" icon={ScrollText} label="Aranceles" />
