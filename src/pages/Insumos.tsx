@@ -181,7 +181,8 @@ export default function Insumos() {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Precio</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-orange-500 uppercase tracking-wider text-right bg-orange-50/30">(-) Materiales</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-indigo-500 uppercase tracking-wider text-right bg-indigo-50/30">(-) Laboratorio</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-emerald-600 uppercase tracking-wider text-right bg-emerald-50/30 border-l border-emerald-100">(=) Margen Bruto</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right bg-slate-50/50 border-l border-slate-100">(-) Costo Op.</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-emerald-600 uppercase tracking-wider text-right bg-emerald-50/30 border-l border-emerald-100">(=) Utilidad</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Margen</th>
                             </tr>
                         </thead>
@@ -189,7 +190,7 @@ export default function Insumos() {
                             {Object.entries(groupedItems).map(([category, items]: [string, any], idx) => (
                                 <Fragment key={`cat-${category}-${idx}`}>
                                     <tr className="bg-white/50 border-b border-slate-100">
-                                        <td colSpan={7} className="px-6 py-3 bg-slate-50/50">
+                                        <td colSpan={8} className="px-6 py-3 bg-slate-50/50">
                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]"><span>{category || 'General'}</span></span>
                                         </td>
                                     </tr>
@@ -247,8 +248,11 @@ export default function Insumos() {
                                                     />
                                                 </div>
                                             </td>
-                                            <td className={`px-6 py-4 text-right font-bold text-sm bg-emerald-50/30 border-l border-emerald-100 ${item.grossMargin < 0 ? 'text-red-500' : 'text-emerald-700'}`}>
-                                                <span>${item.grossMargin.toFixed(2)}</span>
+                                            <td className="px-6 py-4 text-right font-medium text-slate-600 bg-slate-50/50 border-l border-slate-100">
+                                                <span>-${item.overheadCost?.toFixed(2)}</span>
+                                            </td>
+                                            <td className={`px-6 py-4 text-right font-bold text-sm bg-emerald-50/30 border-l border-emerald-100 ${(item.grossMargin - (item.overheadCost || 0)) < 0 ? 'text-red-500' : 'text-emerald-700'}`}>
+                                                <span>${(item.grossMargin - (item.overheadCost || 0)).toFixed(2)}</span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <Badge
