@@ -52,7 +52,10 @@ export const aiAssistantService = {
             • Costos Fijos Mensuales: $${clinicConfig.FIXED_COSTS_MONTHLY}
             • Horas Operativas: ${clinicConfig.OPERATIONAL_HOURS_MONTHLY}h/mes
             • Costo Operativo por Minuto: $${(supplyAnalysis.config?.costPerMinute || 0).toFixed(2)}
-            • **IMPORTANTE**: Los pagos a doctores (aranceles) se calculan sobre el **(Precio - Costo Laboratorio)**. Los materiales clínicos no afectan el pago al doctor.
+            • **IMPORTANTE**:
+              - **Pagos a Doctores**: Se calculan sobre (Precio - Costo Laboratorio).
+              - **Rentabilidad Clínica**: Se calcula como (Precio - Pago Dr - Materiales - Laboratorio - **COSTO OPERATIVO**).
+              - El "Aporte Neto" de un doctor es su utilidad real entregada a la clínica después de descontar el uso del sillón.
 
             ────────────────────────
             📈 REGLAS DE ARANCEL (SISTEMA DE PAGOS)
