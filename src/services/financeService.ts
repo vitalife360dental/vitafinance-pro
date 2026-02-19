@@ -471,12 +471,13 @@ export const financeService = {
 
     // --- Production Analytics Engine 🏭 ---
     async getProductionAnalytics() {
-        // 1. Fetch Base Data + Doctor Commission Rules
-        const [transactions, treatments, commissionRules, treatmentCosts] = await Promise.all([
+        // 1. Fetch Base Data + Doctor Commission Rules + Clinic Config
+        const [transactions, treatments, commissionRules, treatmentCosts, clinicConfig] = await Promise.all([
             this.getTransactions(),
             this.getAranceles(),
             this.getDoctorCommissions(),
-            supabase.from('vf_treatment_costs').select('*')
+            supabase.from('vf_treatment_costs').select('*'),
+            this.getClinicConfig()
         ]);
 
         const normalize = (str: string) =>
@@ -575,12 +576,24 @@ export const financeService = {
             // Usually clinic supplies are separate from external lab costs.
             const suppliesCost = Number(tx.amount) * 0.15;
 
-            const netUtility = Math.max(0, Number(tx.amount) - tariffCost - suppliesCost - labCost);
+            // Operational Cost (Costo Sillón)
+            // Calculate dynamically from clinic config
+            const fixedCosts = Number(clinicConfig?.FIXED_COSTS_MONTHLY) || 0;
+            const hoursMonthly = Number(clinicConfig?.OPERATIONAL_HOURS_MONTHLY) || 160;
+            const calculatedCostPerMinute = fixedCosts / (hoursMonthly * 60);
+
+            // Use calculated or fallback to $0.33 (approx $3100/mo)
+            const costPerMinute = calculatedCostPerMinute > 0 ? calculatedCostPerMinute : 0.33;
+            const duration = 30; // Default or fetch real duration
+            const operationalCost = duration * costPerMinute;
+
+            const netUtility = Math.max(0, Number(tx.amount) - tariffCost - suppliesCost - labCost - operationalCost);
 
             return {
                 ...tx,
                 tariffCost,
                 suppliesCost,
+                operationalCost,
                 netUtility,
                 commissionRate, // Attach rate for UI display
                 treatmentCategory, // Attach category for transparency
@@ -616,12 +629,20 @@ export const financeService = {
 
         const doctorsDict: Record<string, any> = {};
         processedOps.forEach(op => {
+            // FILTER: Only include PAID transactions for Doctor Performance & Commission Calculation
+            // User requested: "solo los pagos que sean en el estado cancelado"
+            const status = normalize(op.status || '');
+            const isPaid = status === 'cancelado' || status === 'completado' || status === 'pagado';
+
+            if (!isPaid) return;
+
             if (!doctorsDict[op.doctor]) {
                 doctorsDict[op.doctor] = {
                     name: op.doctor,
                     attentions: 0,
                     billing: 0,
                     tariffs: 0,
+                    operationalCost: 0,
                     netContribution: 0,
                     commissionRate: op.commissionRate, // Store the rate for display
                     ops: [] // Store individual operations for breakdown
@@ -630,7 +651,8 @@ export const financeService = {
             doctorsDict[op.doctor].attentions += 1;
             doctorsDict[op.doctor].billing += Number(op.amount);
             doctorsDict[op.doctor].tariffs += op.tariffCost;
-            doctorsDict[op.doctor].netContribution += op.netUtility;
+            doctorsDict[op.doctor].operationalCost += op.operationalCost;
+            doctorsDict[op.doctor].netContribution += op.netUtility; // This already has opCost deducted in map step
             doctorsDict[op.doctor].ops.push({
                 id: op.id,
                 date: op.date,
@@ -639,22 +661,28 @@ export const financeService = {
                 category: op.treatmentCategory,
                 amount: Number(op.amount),
                 commissionRate: op.commissionRate,
-                commissionAmount: op.tariffCost
+                commissionAmount: op.tariffCost,
+                operationalCost: op.operationalCost
             });
         });
-        const doctorsList = Object.values(doctorsDict).sort((a, b) => b.netContribution - a.netContribution);
+        const doctorsList = Object.values(doctorsDict).map(d => ({
+            ...d,
+            netContribution: d.billing - d.tariffs - d.operationalCost // Recalculate net after op cost
+        })).sort((a, b) => b.netContribution - a.netContribution);
 
         // D. Top Treatments
         const treatmentsDict: Record<string, any> = {};
         processedOps.forEach(op => {
             const name = op.treatment_name || op.description;
             if (!treatmentsDict[name]) {
-                treatmentsDict[name] = { name, count: 0, price: 0, tariff: 0, supplies: 0, utility: 0 };
+                treatmentsDict[name] = { name, count: 0, price: 0, tariff: 0, supplies: 0, operationalCost: 0, utility: 0 };
             }
             treatmentsDict[name].count += 1;
-            treatmentsDict[name].price += Number(op.amount); // Accumulate total revenue for avg later? Or just sum
+            treatmentsDict[name].price += Number(op.amount);
             treatmentsDict[name].tariff += op.tariffCost;
             treatmentsDict[name].supplies += op.suppliesCost;
+            treatmentsDict[name].operationalCost += op.operationalCost;
+
             treatmentsDict[name].utility += op.netUtility;
         });
         const treatmentsList = Object.values(treatmentsDict)

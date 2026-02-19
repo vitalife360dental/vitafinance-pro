@@ -38,6 +38,9 @@ export default function ProductionAranceles({ data }: { data: any }) {
                             <th className="px-6 py-4 font-bold text-right">Precio Público</th>
                             <th className="px-6 py-4 font-bold text-right text-orange-500">Pago Dr. (Arancel)</th>
                             <th className="px-6 py-4 font-bold text-right text-red-400">Insumos (Est. 15%)</th>
+                            <th className="px-6 py-4 font-bold text-right text-orange-500">Pago Dr. (Arancel)</th>
+                            <th className="px-6 py-4 font-bold text-right text-red-400">Insumos (Est. 15%)</th>
+                            <th className="px-6 py-4 font-bold text-right text-red-500">Gasto Operativo</th>
                             <th className="px-6 py-4 font-bold text-right text-emerald-600">Margen Clínica</th>
                             <th className="px-6 py-4 font-bold text-right">% Margen</th>
                         </tr>
@@ -48,7 +51,12 @@ export default function ProductionAranceles({ data }: { data: any }) {
                             const unitPrice = t.price / t.count;
                             const unitTariff = t.tariff / t.count;
                             const unitSupplies = t.supplies / t.count;
-                            const unitMargin = unitPrice - unitTariff - unitSupplies;
+                            // Calculate unit operational cost (if available from service aggregation, else 0)
+                            // We need to ensure financeService aggregates 'operationalCost' into 'treatmentsDict' first.
+                            // Assuming financeService update (step below) handles it, or we use t.operationalCost
+                            const unitOpCost = (t.operationalCost || 0) / t.count;
+
+                            const unitMargin = unitPrice - unitTariff - unitSupplies - unitOpCost;
                             const marginPct = (unitMargin / unitPrice) * 100;
 
                             return (
@@ -57,6 +65,7 @@ export default function ProductionAranceles({ data }: { data: any }) {
                                     <td className="px-6 py-4 text-right font-medium">${unitPrice.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-right text-orange-500">-${unitTariff.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-right text-red-400">-${unitSupplies.toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-right text-red-500">-${unitOpCost.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-right font-bold text-emerald-600">+${unitMargin.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`px-2 py-1 rounded-md text-xs font-bold ${marginPct < 20 ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>

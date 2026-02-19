@@ -52,6 +52,7 @@ export default function ProductionDoctors({ data }: { data: any }) {
                                 <th className="px-6 py-4 font-bold text-center">Pacientes Atendidos</th>
                                 <th className="px-6 py-4 font-bold text-right">Facturación Generada</th>
                                 <th className="px-6 py-4 font-bold text-right text-orange-500">Aranceles Pagados</th>
+                                <th className="px-6 py-4 font-bold text-right text-red-500">Costo Operativo</th>
                                 <th className="px-6 py-4 font-bold text-right text-emerald-600">Aporte Neto (Clinica)</th>
                                 <th className="px-6 py-4 font-bold text-center">Estado</th>
                             </tr>
@@ -92,7 +93,11 @@ export default function ProductionDoctors({ data }: { data: any }) {
                                                 <div className="flex flex-col items-end">
                                                     <span>-${doc.tariffs.toFixed(2)}</span>
                                                     <span className="text-[10px] text-orange-400">{Math.round((doc.commissionRate || 0.33) * 100)}%</span>
+                                                    <span className="text-[10px] text-orange-400">{Math.round((doc.commissionRate || 0.33) * 100)}%</span>
                                                 </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-medium text-red-500">
+                                                -${doc.operationalCost?.toFixed(2) || '0.00'}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <span className="font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">
