@@ -81,7 +81,7 @@ export default function Ingresos() {
             };
 
             if (selectedTransaction) {
-                await financeService.updateTransaction(selectedTransaction.id, payload);
+                await financeService.updateTransaction(selectedTransaction.id, payload, selectedTransaction.source);
             } else {
                 await financeService.createTransaction(payload);
             }
@@ -399,7 +399,7 @@ export default function Ingresos() {
                                                         if (newVal !== (t.invoice_number || '')) {
                                                             try {
                                                                 // Optimistic update locally could be done here, but safe way:
-                                                                await financeService.updateTransaction(t.id, { invoice_number: newVal });
+                                                                await financeService.updateTransaction(t.id, { invoice_number: newVal }, t.source);
                                                                 // Ideally, we toast success, but for now we just let it stick
                                                                 // We don't reload *everything* to keep it snappy, unless necessary
                                                             } catch (err) {

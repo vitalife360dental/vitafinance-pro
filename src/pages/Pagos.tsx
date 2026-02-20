@@ -271,7 +271,7 @@ export default function Pagos() {
                             <tr className="bg-slate-50 border-b border-slate-100">
                                 <th className="px-6 py-4 font-bold text-slate-500">Doctor</th>
                                 <th className="px-6 py-4 font-bold text-slate-500 text-center">Pacientes</th>
-                                <th className="px-6 py-4 font-bold text-slate-500 text-right">Facturación</th>
+                                <th className="px-6 py-4 font-bold text-slate-500 text-right">Utilidad</th>
                                 <th className="px-6 py-4 font-bold text-slate-800 text-right bg-slate-100/50">Arancel</th>
                                 <th className="px-6 py-4 font-bold text-emerald-600 text-right">Pagado</th>
                                 <th className="px-6 py-4 font-bold text-amber-600 text-right">Saldo</th>
@@ -310,7 +310,12 @@ export default function Pagos() {
                                             <td className="px-6 py-4 text-center">
                                                 <Badge variant="neutral">{doc.attentions}</Badge>
                                             </td>
-                                            <td className="px-6 py-4 text-right text-slate-600">${doc.billing.toFixed(2)}</td>
+                                            <td className="px-6 py-4 text-right text-slate-600">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="font-bold">${(doc.commissionableBase || 0).toFixed(2)}</span>
+                                                    <span className="text-[10px] text-slate-400">de ${doc.billing.toFixed(2)}</span>
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4 text-right font-bold text-slate-900 bg-slate-50/50">
                                                 <div className="flex flex-col items-end">
                                                     <span>${doc.tariffs.toFixed(2)}</span>
@@ -737,7 +742,7 @@ export default function Pagos() {
                                                 <th className="px-5 py-4 font-bold text-slate-600">Fecha</th>
                                                 <th className="px-5 py-4 font-bold text-slate-600">Paciente</th>
                                                 <th className="px-4 py-4 font-bold text-slate-600">Tratamiento</th>
-                                                <th className="px-5 py-4 font-bold text-slate-600 text-right">Facturado</th>
+                                                <th className="px-5 py-4 font-bold text-slate-600 text-right">Utilidad</th>
                                                 <th className="px-5 py-4 font-bold text-slate-600 text-center">% Arancel</th>
                                                 <th className="px-5 py-4 font-bold text-teal-600 text-right bg-teal-50/30">Arancel</th>
                                             </tr>
@@ -748,7 +753,10 @@ export default function Pagos() {
                                                     <td className="px-5 py-3 text-slate-500">{format(new Date(op.date), 'dd MMM', { locale: es })}</td>
                                                     <td className="px-5 py-3 font-semibold text-slate-700">{op.patient}</td>
                                                     <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{op.treatment}</td>
-                                                    <td className="px-5 py-3 text-right text-slate-500 font-medium">${op.amount.toFixed(2)}</td>
+                                                    <td className="px-5 py-3 text-right text-slate-500 font-medium">
+                                                        ${(op.netBase || 0).toFixed(2)}
+                                                        <div className="text-[9px] text-slate-400">de ${(op.amount || 0).toFixed(2)}</div>
+                                                    </td>
                                                     <td className="px-5 py-3 text-center">
                                                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${op.commissionRate === (selectedDoctorProduction.commissionRate / 100) ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-600 border border-amber-200'}`}>
                                                             {(op.commissionRate * 100).toFixed(0)}%
@@ -763,7 +771,7 @@ export default function Pagos() {
                                         <tfoot>
                                             <tr className="bg-slate-900 text-white">
                                                 <td colSpan={3} className="px-5 py-4 font-bold text-teal-400">TOTAL GENERADO</td>
-                                                <td className="px-5 py-4 text-right font-bold opacity-80">${selectedDoctorProduction.billing.toFixed(2)}</td>
+                                                <td className="px-5 py-4 text-right font-bold opacity-80">${(selectedDoctorProduction.commissionableBase || 0).toFixed(2)}</td>
                                                 <td className="px-5 py-4"></td>
                                                 <td className="px-5 py-4 text-right text-lg font-black">${selectedDoctorProduction.tariffs.toFixed(2)}</td>
                                             </tr>

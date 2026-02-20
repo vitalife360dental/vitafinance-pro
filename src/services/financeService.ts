@@ -86,23 +86,26 @@ export const financeService = {
             console.warn('Local fetch exception:', localErr);
         }
 
-        // 2. Fetch External Data (Income from 'transactions')
+        // 2. Fetch External Data (Income from 'transactions') and Metadata
         let externalData: any[] = [];
+        const metadataMap = new Map();
         try {
-            const { data: extDocs, error: extError } = await supabase
-                .from('transactions')
-                .select('*')
-                // Basic filtering, but we handle details in mapping
-                .order('date', { ascending: false })
-                .limit(500);
+            const [extRes, metaRes] = await Promise.all([
+                supabase.from('transactions').select('*').order('date', { ascending: false }).limit(500),
+                supabase.from('vf_transaction_metadata').select('*')
+            ]);
 
-            if (!extError && extDocs) {
-                externalData = extDocs;
+            if (!extRes.error && extRes.data) {
+                externalData = extRes.data;
             } else {
-                console.warn('Could not fetch from transactions', extError);
+                console.warn('Could not fetch from transactions', extRes.error);
+            }
+
+            if (!metaRes.error && metaRes.data) {
+                metaRes.data.forEach((m: any) => metadataMap.set(m.transaction_id, m));
             }
         } catch (err) {
-            console.warn('External fetch failed', err);
+            console.warn('External/Metadata fetch failed', err);
         }
 
         // 3. Process & Merge
@@ -190,6 +193,7 @@ export const financeService = {
                 method: t.method || 'EFECTIVO',
                 status: t.payment_status || 'CANCELADO',
                 balance: Number(t.balance || 0),
+                invoice_number: metadataMap.get(t.id)?.invoice_number || t.invoice_number || null,
 
                 concept: t.treatment_name || t.description || 'Consulta',
                 category: 'Ingresos Clínicos',
@@ -240,7 +244,30 @@ export const financeService = {
         return data;
     },
 
-    async updateTransaction(id: string | number, updates: Partial<Transaction>) {
+    async updateTransaction(id: string | number, updates: Partial<Transaction>, source: string = 'VitaFinance') {
+        if (source === 'DentalFlow') {
+            // ONLY implicitly update local metadata for external transactions
+            // DO NOT touch DentalFlow syncs. Invoice Number is saved locally.
+            const externalPayload: any = {};
+            if (updates.invoice_number !== undefined) externalPayload.invoice_number = updates.invoice_number;
+
+            if (Object.keys(externalPayload).length === 0) return null; // Nothing safe to update
+
+            const { error } = await supabase
+                .from('vf_transaction_metadata')
+                .upsert({
+                    transaction_id: id,
+                    invoice_number: externalPayload.invoice_number,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'transaction_id' })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return { id, ...updates };
+        }
+
+        // Standard Local Update
         const { data, error } = await supabase
             .from('vf_transactions')
             .update({
@@ -565,16 +592,10 @@ export const financeService = {
             const lookupName = relatedTreatment?.name || tx.treatment_name || tx.description || 'Consulta';
             const commissionRate = getCommissionRate(doctorName, treatmentCategory, lookupName);
 
-            // Special Costs Deduction (Lab costs) - Priority: Match by normalization
+            // Special Costs Deduction (Lab costs & Material costs)
             const treatmentCostData = costMap[normalize(lookupName)] || {};
             const labCost = Number(treatmentCostData.lab_cost || 0);
-
-            // Arancel: commission on FULL billed amount (lab cost only affects net utility)
-            const tariffCost = Number(tx.amount) * commissionRate;
-
-            // Estimated Supplies (Materiales) - Rule of thumb: 15% 
-            // Usually clinic supplies are separate from external lab costs.
-            const suppliesCost = Number(tx.amount) * 0.15;
+            const materialCost = Number(treatmentCostData.supply_cost || 0);
 
             // Operational Cost (Costo Sillón)
             // Calculate dynamically from clinic config
@@ -587,7 +608,21 @@ export const financeService = {
             const duration = 30; // Default or fetch real duration
             const operationalCost = duration * costPerMinute;
 
-            const netUtility = Math.max(0, Number(tx.amount) - tariffCost - suppliesCost - labCost - operationalCost);
+            // NET BASE for Commission Calculation (Base de Calcuo)
+            // User Formula: Facturado - Materiales - Laboratorio - Costo Operativo
+            const netBase = Math.max(0, Number(tx.amount) - labCost - materialCost - operationalCost);
+
+            // Commission Calculation (Net Commission)
+            const tariffCost = netBase * commissionRate;
+
+            // Estimated Supplies (Materiales) - Kept for reference but now superseded by specific material_cost if available
+            // If specific material_cost is 0, we can fallback to 0 or keep the estimate logic.
+            // For now, let's use the specific cost if exists, else 0 to be precise with the new model.
+            const suppliesCost = materialCost > 0 ? materialCost : 0;
+
+            // Clinic Utility (Net Profit)
+            // Amount - Commission - All Real Costs
+            const netUtility = Number(tx.amount) - tariffCost - labCost - suppliesCost - operationalCost;
 
             return {
                 ...tx,
@@ -598,7 +633,8 @@ export const financeService = {
                 commissionRate, // Attach rate for UI display
                 treatmentCategory, // Attach category for transparency
                 chair: tx.chair || 'Sillón Indefinido',
-                doctor: doctorName
+                doctor: doctorName,
+                netBase // Useful for debugging/display
             };
         });
 
@@ -644,6 +680,7 @@ export const financeService = {
                     tariffs: 0,
                     operationalCost: 0,
                     netContribution: 0,
+                    commissionableBase: 0, // NEW: Sum of netBase used for calculations
                     commissionRate: op.commissionRate, // Store the rate for display
                     ops: [] // Store individual operations for breakdown
                 };
@@ -653,6 +690,7 @@ export const financeService = {
             doctorsDict[op.doctor].tariffs += op.tariffCost;
             doctorsDict[op.doctor].operationalCost += op.operationalCost;
             doctorsDict[op.doctor].netContribution += op.netUtility; // This already has opCost deducted in map step
+            doctorsDict[op.doctor].commissionableBase += (op.netBase || 0); // Accumulate netBase
             doctorsDict[op.doctor].ops.push({
                 id: op.id,
                 date: op.date,
@@ -662,7 +700,8 @@ export const financeService = {
                 amount: Number(op.amount),
                 commissionRate: op.commissionRate,
                 commissionAmount: op.tariffCost,
-                operationalCost: op.operationalCost
+                operationalCost: op.operationalCost,
+                netBase: op.netBase // Pass through for details
             });
         });
         const doctorsList = Object.values(doctorsDict).map(d => ({
@@ -693,6 +732,8 @@ export const financeService = {
             }))
             .sort((a, b) => b.utility - a.utility);
 
+        const fullCatalog = await this.getFullArancelesCatalog();
+
         return {
             summary: {
                 totalBilling,
@@ -704,8 +745,110 @@ export const financeService = {
             chairs: chairsList,
             doctors: doctorsList,
             treatments: treatmentsList,
-            raw: processedOps
+            raw: processedOps,
+            fullCatalog
         };
+    },
+
+    async getFullArancelesCatalog() {
+        console.log('Fetching full unified Aranceles catalog...');
+        const [treatments, costsResult, commissionRules] = await Promise.all([
+            this.getAranceles(),
+            supabase.from('vf_treatment_costs').select('*'),
+            this.getDoctorCommissions()
+        ]);
+
+        const config = await this.getClinicConfig();
+        const fixedCosts = config.FIXED_COSTS_MONTHLY || 1500;
+        const opHours = config.OPERATIONAL_HOURS_MONTHLY || 160;
+        const costPerMinute = fixedCosts / (opHours * 60);
+
+        const normalize = (str: string) =>
+            str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
+
+        const NAME_MAPPING: Record<string, string> = {
+            'corona circonia': 'corona zirconia',
+            'botox perioral': 'botox peribucal',
+            'cirugia 3er molares': 'cirugia 3ros molares',
+            'puente fijo 3 piezas hibrida': 'puente fijo 3 piezas',
+            'puente de ceromero 2 piezas': 'puente ceromero 2 piezas',
+            'retratamiento premolares': 'retratamiento molares',
+            'endodoncia en diente incisivo': 'endodoncia incisivo',
+            'diseno de ceramica (8 piezas)': 'diseno de ceramica',
+            'diseño de ceramica (8 piezas)': 'diseno de ceramica',
+            'diseno de sonrisa (8 piezas)': 'diseno de sonrisa',
+            'diseño de sonrisa (8 piezas)': 'diseno de sonrisa',
+            'elevacion piso seno': 'elevacion piso de seno',
+            'instalacion de plano de mordida': 'instalacion plano de mordida',
+            'plano relajacion': 'plano de relajacion'
+        };
+
+        const costMap = new Map();
+        costsResult.data?.forEach((c: any) => {
+            if (c.treatment_name) {
+                const key = normalize(c.treatment_name);
+                costMap.set(key, c);
+            }
+        });
+
+        const catalog: any[] = [];
+
+        treatments.forEach(t => {
+            let searchName = normalize(t.name);
+            if (NAME_MAPPING[searchName]) searchName = normalize(NAME_MAPPING[searchName]);
+
+            let localCost = costMap.get(searchName);
+            if (!localCost) {
+                for (const dbKey of costMap.keys()) {
+                    if (dbKey.length > 4 && searchName.includes(dbKey)) {
+                        localCost = costMap.get(dbKey);
+                        break;
+                    }
+                }
+            }
+            localCost = localCost || {};
+
+            const finalDuration = t.duration ? parseInt(t.duration) : (localCost.duration_override || 30);
+            const labCost = Number(localCost.lab_cost || 0);
+            const suppliesCost = Number(localCost.supply_cost || 0);
+            const operationalCost = finalDuration * costPerMinute;
+
+            // Generate single explicit row for this treatment
+            // 1. Determine highest applicable commission rate for this treatment
+            let bestRate = 0.33; // default
+
+            const currentCatNormalized = normalize(t.category);
+            const currentNameNormalized = normalize(t.name);
+
+            commissionRules.forEach(rule => {
+                const ruleCatNormalized = normalize(rule.category);
+                if (ruleCatNormalized === currentCatNormalized || ruleCatNormalized === currentNameNormalized) {
+                    const ruleRate = Number(rule.commission_rate) / 100;
+                    if (ruleRate > bestRate) {
+                        bestRate = ruleRate;
+                    }
+                }
+            });
+
+            const commissionAmount = t.price * bestRate;
+            const utility = t.price - commissionAmount - labCost - suppliesCost - operationalCost;
+
+            catalog.push({
+                treatment: t.name,
+                category: t.category,
+                price: t.price,
+                tariff: commissionAmount,
+                tariffRate: bestRate,
+                supplies: suppliesCost, // Explicitly separate
+                lab: labCost,           // Explicitly separate
+                operationalCost,
+                utility: utility,
+                isBase: bestRate === 0.33
+            });
+        });
+
+        // Ensure sorted by treatment name for easy reading
+        return catalog.sort((a, b) => a.treatment.localeCompare(b.treatment));
     },
 
     // --- Metas / Goals Engine 🎯 ---
